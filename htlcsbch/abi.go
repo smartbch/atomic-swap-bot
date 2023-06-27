@@ -206,6 +206,16 @@ const (
           "internalType": "uint256",
           "name": "maxSwapAmt",
           "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "statusChecker",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "unavailable",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -285,6 +295,11 @@ const (
           "internalType": "uint256",
           "name": "_maxSwapAmt",
           "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_statusChecker",
+          "type": "address"
         }
       ],
       "name": "registerMarketMaker",
@@ -322,6 +337,24 @@ const (
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "marketMaker",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "b",
+          "type": "bool"
+        }
+      ],
+      "name": "setUnavailable",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -365,14 +398,14 @@ const (
           "type": "uint16"
         },
         {
-          "internalType": "bytes32",
-          "name": "secretKey",
-          "type": "bytes32"
-        },
-        {
           "internalType": "enum AtomicSwapEther.States",
           "name": "state",
           "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "secretKey",
+          "type": "bytes32"
         }
       ],
       "stateMutability": "view",
