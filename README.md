@@ -21,6 +21,8 @@ go run github.com/smartbch/atomic-swap-bot/cmd/asbot \
 	--db-file=bot.db \
 	--bch-key= \
 	--sbch-key= \
+	--bch-rpc-url= \
+	--sbch-rpc-url= \
 	--sbch-htlc-addr= \
 	--sbch-gas-price= \
 	--bch-timelock= \

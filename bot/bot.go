@@ -206,7 +206,7 @@ func (bot *MarketMakerBot) scanBchBlocks() {
 
 	if newBlockNum > int64(lastBlockNum) {
 		bot.handleBchRefunds()
-		bot.handleBchUserDeposits(newBlockNum)
+		bot.handleBchUserDeposits()
 	}
 	for h := int64(lastBlockNum) + 1; h <= newBlockNum; h++ {
 		if !bot.handleBchBlock(h) {
@@ -459,7 +459,7 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 	return true
 }
 
-func (bot *MarketMakerBot) handleBchUserDeposits(currBlockNum int64) {
+func (bot *MarketMakerBot) handleBchUserDeposits() {
 	log.Info("handle BCH user deposits ...")
 	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
 	if err != nil {
@@ -471,8 +471,14 @@ func (bot *MarketMakerBot) handleBchUserDeposits(currBlockNum int64) {
 	for _, record := range records {
 		log.Info("handle BCH user deposit: ", toJSON(record))
 
+		//confirmations := currBlockNum - int64(record.BchLockHeight) + 1
+		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
+		if err != nil {
+			log.Error("RPC error, failed to lock sBCH to HTLC: ", err)
+			continue
+		}
+
 		// do not send sBCH to user if it's too late!
-		confirmations := currBlockNum - int64(record.BchLockHeight) + 1
 		if confirmations > int64(bot.bchTimeLock)/3 {
 			log.Info("too late to lock sBCH",
 				", confirmations: ", confirmations,

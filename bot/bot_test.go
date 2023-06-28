@@ -315,6 +315,7 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 	}))
 
 	_bchCli := newMockBchClient(134, 160)
+	_bchCli.confirmations[toHex(_txHash)] = 100
 	_bot := &MarketMakerBot{
 		db:          _db,
 		bchCli:      _bchCli,
