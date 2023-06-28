@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/smartbch/atomic-swap/market-maker-bot/htlcsbch"
+	"github.com/smartbch/atomic-swap-bot/htlcsbch"
 )
 
 const (

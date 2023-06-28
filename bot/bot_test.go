@@ -17,8 +17,8 @@ import (
 	"github.com/gcash/bchd/wire"
 	"github.com/gcash/bchutil"
 
-	"github.com/smartbch/atomic-swap/market-maker-bot/htlcbch"
-	"github.com/smartbch/atomic-swap/market-maker-bot/htlcsbch"
+	"github.com/smartbch/atomic-swap-bot/htlcbch"
+	"github.com/smartbch/atomic-swap-bot/htlcsbch"
 )
 
 var (

@@ -14,7 +14,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/smartbch/atomic-swap/market-maker-bot/bot"
+	"github.com/smartbch/atomic-swap-bot/bot"
 )
 
 var (

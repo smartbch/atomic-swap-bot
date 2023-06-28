@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"github.com/gcash/bchd/txscript"
 
-	"github.com/smartbch/atomic-swap/market-maker-bot/htlcbch"
+	"github.com/smartbch/atomic-swap-bot/htlcbch"
 )
 
 func getHtlcP2shPkScript(senderPkh, recipientPkh, hashLock []byte, expiration, penaltyBPS uint16) []byte {

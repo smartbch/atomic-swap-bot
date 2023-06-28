@@ -1,4 +1,4 @@
-module github.com/smartbch/atomic-swap/market-maker-bot
+module github.com/smartbch/atomic-swap-bot
 
 go 1.19
 

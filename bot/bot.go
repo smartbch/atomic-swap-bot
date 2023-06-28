@@ -19,8 +19,8 @@ import (
 	"github.com/gcash/bchutil"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/smartbch/atomic-swap/market-maker-bot/htlcbch"
-	"github.com/smartbch/atomic-swap/market-maker-bot/htlcsbch"
+	"github.com/smartbch/atomic-swap-bot/htlcbch"
+	"github.com/smartbch/atomic-swap-bot/htlcsbch"
 )
 
 type MarketMakerBot struct {

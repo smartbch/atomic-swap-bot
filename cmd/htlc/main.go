@@ -13,7 +13,7 @@ import (
 	"github.com/gcash/bchutil"
 	"github.com/urfave/cli/v2"
 
-	"github.com/smartbch/atomic-swap/market-maker-bot/htlcbch"
+	"github.com/smartbch/atomic-swap-bot/htlcbch"
 )
 
 const (
