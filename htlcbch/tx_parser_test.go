@@ -59,29 +59,21 @@ func TestGetHtlcReceiptInfo(t *testing.T) {
 	require.Equal(t, "7365637265740000000000000000000000000000000000000000000000000000", receiptInfo.Secret)
 }
 
-/*
 func TestIsHtlcDepositTx(t *testing.T) {
-	txHex := "02000000014063938cc2418fb0cbd855a3743f8807fe19e21ae724562aecf8f009a4d8905b000000006b48304502210081ac9e44c11d2ebb87e9cce90f85eaffbf257721867f957f54e9022f445d513802206efdf6a1b7f83e84a1e4f840427a0de932102bcbce3d294bcf0bb9b88806d77f41210209476c86262ab494e258f4a0b5eded53a9593458061064525fe804b9d699a6fbffffffff03881300000000000017a914ea613599b57cd5604b5e2e29f669cae3ebc212348700000000000000006b6a0453424153144d027fdd0585302264922bed58b8a84d38776ccb14a47165ef477c99a53cdeb846a7687a069d7df27c20ed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf3040000002414765fd1f0e3d125b36de29b5f88295a247814276e18730100000000001976a914a47165ef477c99a53cdeb846a7687a069d7df27c88ac00000000"
+	txHex := "0200000001f96d09453d59c691d5d3f50e80d797c88785534d5396a05bdec77a9d9bbd51b80000000064410b6856319797109f8d69bc4defe2074387bc3239fa7b2f21f4308ab2f132cc902f5ac63a7825134211e94f002d2fcc92efcd50ff38e020e213eccb6ce137b6cd412103bfca3bfe0d213cad8c7e88573fdae7948381582af35c7af8e51c8d1c9e7a8d68000000000380841e000000000017a9143c7cd004400d5e1609ddb062cd327c39e44bd4718700000000000000006c6a045342415314104f3f29055f1b2b6debeb6e69a6f0d534f01585142976d1e8430b664cb903e05187a4277d111a3b5620511806571595259ff92bc5bdd13530b8cda3aec235ac6f31aa3e29574cb5455e0200060201f41412b8b81ffcf5af1ce29f0d5bb9a6347601d17b786e437a00000000001976a9142976d1e8430b664cb903e05187a4277d111a3b5688ac00000000"
 
-	tx, err := msgTxFromBytes(gethcmn.FromHex(txHex))
+	tx, err := MsgTxFromBytes(gethcmn.FromHex(txHex))
 	require.NoError(t, err)
 
-	recipientPkh := gethcmn.FromHex("0x4d027fdd0585302264922bed58b8a84d38776ccb")
+	recipientPkh := gethcmn.FromHex("0x104f3f29055f1b2b6debeb6e69a6f0d534f01585")
 	result := isHtlcDepositTx(tx, recipientPkh)
 	require.NotNil(t, result)
-	require.Equal(t, "191ab837849dbba53236f4344d30fd8567b43b04ed12007ca869b007a1f98630", result.TxHash)
-	require.Equal(t, "4d027fdd0585302264922bed58b8a84d38776ccb", hex.EncodeToString(result.RecipientPkh))
-	require.Equal(t, "a47165ef477c99a53cdeb846a7687a069d7df27c", hex.EncodeToString(result.SenderPkh))
-	require.Equal(t, "ed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf3", hex.EncodeToString(result.HashLock))
-	require.Equal(t, uint32(36), result.Expiration)
-	require.Equal(t, "765fd1f0e3d125b36de29b5f88295a247814276e", hex.EncodeToString(result.SenderEvmAddr))
-	require.Equal(t, "ea613599b57cd5604b5e2e29f669cae3ebc21234", hex.EncodeToString(result.ScriptHash))
-	require.Equal(t, uint64(5000), result.Value)
+	require.Equal(t, "a4eb7578a853e99acc9d721a204f47dbf15f25a0768eb50f243c1a8337edb26b", result.TxHash)
+	require.Equal(t, "104f3f29055f1b2b6debeb6e69a6f0d534f01585", hex.EncodeToString(result.RecipientPkh))
+	require.Equal(t, "2976d1e8430b664cb903e05187a4277d111a3b56", hex.EncodeToString(result.SenderPkh))
+	require.Equal(t, "511806571595259ff92bc5bdd13530b8cda3aec235ac6f31aa3e29574cb5455e", hex.EncodeToString(result.HashLock))
+	require.Equal(t, uint16(6), result.Expiration)
+	require.Equal(t, "12b8b81ffcf5af1ce29f0d5bb9a6347601d17b78", hex.EncodeToString(result.SenderEvmAddr))
+	require.Equal(t, "3c7cd004400d5e1609ddb062cd327c39e44bd471", hex.EncodeToString(result.ScriptHash))
+	require.Equal(t, uint64(2000000), result.Value)
 }
-*/
-
-//func msgTxFromBytes(data []byte) (*wire.MsgTx, error) {
-//	msg := &wire.MsgTx{}
-//	err := msg.Deserialize(bytes.NewReader(data))
-//	return msg, err
-//}

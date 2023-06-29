@@ -16,8 +16,8 @@ func MsgTxToBytes(tx *wire.MsgTx) []byte {
 	return buf.Bytes()
 }
 
-// func MsgTxFromBytes(data []byte) (*wire.MsgTx, error) {
-// 	msg := &wire.MsgTx{}
-// 	err := msg.Deserialize(bytes.NewReader(data))
-// 	return msg, err
-// }
+func MsgTxFromBytes(data []byte) (*wire.MsgTx, error) {
+	msg := &wire.MsgTx{}
+	err := msg.Deserialize(bytes.NewReader(data))
+	return msg, err
+}
