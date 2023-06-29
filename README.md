@@ -14,7 +14,7 @@ cd atomic-swap-bot
 
 ## bot cmd
 
-Start bot on testnet:
+Start bot on BCH testnet:
 
 ```bash
 go run github.com/smartbch/atomic-swap-bot/cmd/asbot \
@@ -45,7 +45,7 @@ go run github.com/smartbch/atomic-swap-bot/cmd/asbot \
 
 ## htlc cmd
 
-You can user `htlc` cmd to test BCH HTLC covenant using Golang on BCH Testnet3.
+You can use `htlc` cmd to test BCH HTLC covenant using Golang on BCH testnets.
 
 Locking example:
 

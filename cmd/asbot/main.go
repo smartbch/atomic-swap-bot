@@ -37,7 +37,7 @@ var (
 	sbchOpenGas       = uint64(500_000)
 	sbchCloseGas      = uint64(500_000)
 	sbchExpireGas     = uint64(500_000)
-	confirmations     = "0.1:1,1.0:2,2.0:6"
+	bchConfirmations  = uint64(10)
 	debugMode         = true
 )
 
@@ -55,7 +55,7 @@ func main() {
 	flag.Uint64Var(&feeRatio, "fee-ratio", feeRatio, "service fee ratio (in BPS)")
 	flag.Float64Var(&minSwapVal, "min-swap-val", minSwapVal, "min swap value (in BCH)")
 	flag.Float64Var(&maxSwapVal, "max-swap-val", maxSwapVal, "max swap value (in BCH)")
-	flag.StringVar(&confirmations, "confirmations", confirmations, "required confirmations of BCH deposit ")
+	flag.Uint64Var(&bchConfirmations, "bch-confirmations", bchConfirmations, "required confirmations of BCH tx ")
 	flag.Uint64Var(&bchSendFeeRate, "bch-send-fee-rate", bchSendFeeRate, "miner fee rate of BCH HTLC sending tx (Sats/byte)")
 	flag.Uint64Var(&bchReceiveFeeRate, "bch-receive-fee-rate", bchReceiveFeeRate, "miner fee rate of BCH HTLC receiving tx (Sats/byte)")
 	flag.Uint64Var(&bchRefundFeeRate, "bch-refund-fee-rate", bchReceiveFeeRate, "miner fee rate of BCH HTLC refund tx (Sats/byte)")
@@ -76,7 +76,7 @@ func main() {
 		bchRpcUrl, sbchRpcUrl, _sbchHtlcAddr, _sbchGasPrice,
 		uint16(bchTimeLock), uint32(sbchTimeLock), uint16(penaltyRatio), uint16(feeRatio),
 		uint64(math.Round(minSwapVal*1e8)), uint64(math.Round(maxSwapVal*1e8)),
-		confirmations,
+		uint8(bchConfirmations),
 		bchSendFeeRate, bchReceiveFeeRate, bchRefundFeeRate,
 		sbchOpenGas, sbchCloseGas, sbchExpireGas,
 		debugMode,

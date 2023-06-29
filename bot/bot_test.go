@@ -271,18 +271,12 @@ func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 
 	_bchCli := newMockBchClient(124, 130)
 	_bot := &MarketMakerBot{
-		db:          _db,
-		bchCli:      _bchCli,
-		bchPrivKey:  testBchPrivKey,
-		bchPkh:      _botPkh,
-		bchTimeLock: 72,
-
-		bchMinConfirmations: []RequiredConfirmations{
-			{
-				minValSats:    0,
-				confirmations: 10,
-			},
-		},
+		db:               _db,
+		bchCli:           _bchCli,
+		bchPrivKey:       testBchPrivKey,
+		bchPkh:           _botPkh,
+		bchTimeLock:      72,
+		bchConfirmations: 10,
 	}
 	_bot.scanBchBlocks()
 

@@ -47,7 +47,7 @@ type MarketMakerBot struct {
 	serviceFeeRatio        uint16 // in BPS
 	minSwapVal             uint64 // in sats
 	maxSwapVal             uint64 // in sats
-	bchMinConfirmations    []RequiredConfirmations
+	bchConfirmations       uint8
 	bchSendMinerFeeRate    uint64 // sats/byte
 	bchReceiveMinerFeeRate uint64 // sats/byte
 	bchRefundMinerFeeRate  uint64 // sats/byte
@@ -64,7 +64,7 @@ func NewBot(
 	penaltyRatio uint16,
 	feeRatio uint16,
 	minSwapVal, maxSwapVal uint64,
-	bchMinConfirmationsOption string,
+	bchConfirmations uint8,
 	bchSendMinerFeeRate, bchReceiveMinerFeeRate, bchRefundMinerFeeRate uint64,
 	sbchOpenGasLimit, sbchCloseGasLimit, sbchExpireGasLimit uint64,
 	debugMode bool,
@@ -101,11 +101,6 @@ func NewBot(
 		return nil, fmt.Errorf("failed to create sBCH RPC client: %w", err)
 	}
 
-	bchMinConfirmations, err := parseRequiredConfirmationsOption(bchMinConfirmationsOption)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse bchDepositRequiredConfirmationsOption: %w", err)
-	}
-
 	// open DB
 	db, err := OpenDB(dbFile)
 	if err != nil {
@@ -137,7 +132,7 @@ func NewBot(
 		bchSendMinerFeeRate:    bchSendMinerFeeRate,
 		bchReceiveMinerFeeRate: bchReceiveMinerFeeRate,
 		bchRefundMinerFeeRate:  bchRefundMinerFeeRate,
-		bchMinConfirmations:    bchMinConfirmations,
+		bchConfirmations:       bchConfirmations,
 	}, nil
 }
 
@@ -192,23 +187,25 @@ func (bot *MarketMakerBot) scanBchBlocks() {
 	}
 	log.Info("last BCH height: ", lastBlockNum)
 
-	newBlockNum, err := bot.bchCli.getBlockCount()
+	latestBlockNum, err := bot.bchCli.getBlockCount()
 	if err != nil {
 		log.Error("RPC error, failed to get BCH height: ", err)
 		return
 	}
-	log.Info("latest BCH height: ", newBlockNum)
+	log.Info("latest BCH height: ", latestBlockNum)
+
+	safeNewBlockNum := latestBlockNum - int64(bot.bchConfirmations)
 
 	if lastBlockNum == 0 {
-		lastBlockNum = uint64(newBlockNum) - 1
+		lastBlockNum = uint64(safeNewBlockNum) - 1
 		log.Info("init last BCH height: ", lastBlockNum)
 	}
 
-	if newBlockNum > int64(lastBlockNum) {
+	if safeNewBlockNum > int64(lastBlockNum) {
 		bot.handleBchRefunds()
 		bot.handleBchUserDeposits()
 	}
-	for h := int64(lastBlockNum) + 1; h <= newBlockNum; h++ {
+	for h := int64(lastBlockNum) + 1; h <= safeNewBlockNum; h++ {
 		if !bot.handleBchBlock(h) {
 			break
 		}
@@ -491,18 +488,6 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 
 			continue
 		}
-
-		requiredConfirmations := getRequiredConfirmations(bot.bchMinConfirmations, record.Value)
-		if confirmations < int64(requiredConfirmations) {
-			log.Info("not confirmed"+
-				", confirmations: ", confirmations,
-				", required: ", requiredConfirmations)
-			continue
-		}
-
-		log.Info("confirmations: ", confirmations,
-			", required: ", requiredConfirmations,
-			", timeLock: ", record.TimeLock)
 
 		sbchTimeLock := bchTimeLockToSeconds(record.TimeLock) / 2
 		bchValMinusFee := record.Value * (10000 - uint64(bot.serviceFeeRatio)) / 10000
