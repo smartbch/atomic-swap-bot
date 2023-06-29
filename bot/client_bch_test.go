@@ -49,3 +49,13 @@ func TestFindUTXOs(t *testing.T) {
 	_, err = findUTXOs(allUTXOs, 250000000, 3)
 	require.ErrorContains(t, err, "no available UTXOs (minVal: 250000000 sats)")
 }
+
+//func TestGetTxConfirmations(t *testing.T) {
+//	addr, err := bchutil.DecodeAddress("bchtest:qqgy70efq403k2mda04ku6dx7r2nfuq4s5u6xh83hw", &chaincfg.TestNet3Params)
+//	require.NoError(t, err)
+//	bchCli, err := newBchClient("http://user:pass@127.0.0.1:48334", addr)
+//	require.NoError(t, err)
+//	n, err := bchCli.getTxConfirmations("2161067da799837b10f175bbfdfcb1beea19a36606b1239c1ee31871eea6c1c0")
+//	require.NoError(t, err)
+//	require.Equal(t, n, 100)
+//}

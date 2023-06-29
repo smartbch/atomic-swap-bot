@@ -124,11 +124,11 @@ func (c *BchClient) getTxConfirmations(txHashHex string) (int64, error) {
 		return 0, err
 	}
 
-	tx, err := c.client.GetTransaction(&txHash)
+	tx, err := c.client.GetRawTransactionVerbose(&txHash)
 	if err != nil {
 		return 0, err
 	}
-	return tx.Confirmations, nil
+	return int64(tx.Confirmations), nil
 }
 
 func (c *BchClient) sendTx(tx *wire.MsgTx) (*chainhash.Hash, error) {

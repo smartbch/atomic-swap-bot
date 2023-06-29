@@ -471,7 +471,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 		//confirmations := currBlockNum - int64(record.BchLockHeight) + 1
 		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
 		if err != nil {
-			log.Error("RPC error, failed to lock sBCH to HTLC: ", err)
+			log.Error("RPC error, failed to get tx confirmations: ", err)
 			continue
 		}
 
