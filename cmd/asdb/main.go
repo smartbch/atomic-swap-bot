@@ -156,7 +156,7 @@ func printSbch2BchRecordsTable(records []*bot.Sbch2BchRecord) {
 }
 
 func intToStr(n any) string {
-	return intToStr(n)
+	return fmt.Sprintf("%d", n)
 }
 func subStr12(s string) string {
 	if len(s) < 12 {
