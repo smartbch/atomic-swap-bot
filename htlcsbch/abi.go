@@ -11,6 +11,22 @@ import (
 const (
 	_abiJsonStr = `[
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "minStakedValue",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minRetireDelay",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
       "anonymous": false,
       "inputs": [
         {
@@ -98,6 +114,32 @@ const (
       "type": "event"
     },
     {
+      "inputs": [],
+      "name": "MIN_RETIRE_DELAY",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MIN_STAKED_VALUE",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "bytes32",
@@ -132,16 +174,88 @@ const (
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "fromIdx",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "count",
           "type": "uint256"
         }
       ],
-      "name": "marketMakerAddrs",
+      "name": "getMarketMakers",
       "outputs": [
         {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
+          "components": [
+            {
+              "internalType": "address",
+              "name": "addr",
+              "type": "address"
+            },
+            {
+              "internalType": "uint64",
+              "name": "retiredAt",
+              "type": "uint64"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "intro",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes20",
+              "name": "bchPkh",
+              "type": "bytes20"
+            },
+            {
+              "internalType": "uint16",
+              "name": "bchLockTime",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint32",
+              "name": "sbchLockTime",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint16",
+              "name": "penaltyBPS",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint16",
+              "name": "feeBPS",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minSwapAmt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxSwapAmt",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "stakedValue",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "statusChecker",
+              "type": "address"
+            },
+            {
+              "internalType": "bool",
+              "name": "unavailable",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct AtomicSwapEther.MarketMaker[]",
+          "name": "list",
+          "type": "tuple[]"
         }
       ],
       "stateMutability": "view",
@@ -205,6 +319,11 @@ const (
         {
           "internalType": "uint256",
           "name": "maxSwapAmt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "stakedValue",
           "type": "uint256"
         },
         {
@@ -304,7 +423,7 @@ const (
       ],
       "name": "registerMarketMaker",
       "outputs": [],
-      "stateMutability": "nonpayable",
+      "stateMutability": "payable",
       "type": "function"
     },
     {
@@ -318,25 +437,6 @@ const (
       "name": "retireMarketMaker",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "secretLocks",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -420,6 +520,13 @@ const (
         }
       ],
       "name": "updateMarketMaker",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "withdrawStakedValue",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
