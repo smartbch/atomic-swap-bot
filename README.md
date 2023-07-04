@@ -15,7 +15,7 @@ go test ./...
 
 
 
-## Start bot on BCH testnet
+## Start bot on BCH/SBCH testnets
 
 Step1, start your own [BCHN](https://bitcoincashnode.org/en/) testnet node.
 

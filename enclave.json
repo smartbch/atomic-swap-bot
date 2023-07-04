@@ -1,5 +1,5 @@
 {
-  "exe": "bin/asbot",
+  "exe": "asbot",
   "key": "private.pem",
   "debug": false,
   "heapSize": 512,
