@@ -118,6 +118,56 @@ go run github.com/smartbch/atomic-swap-bot/cmd/asbot \
 
 
 
+Or start bot in enclave using [EGo](https://www.edgeless.systems/products/ego/):
+
+```bash
+git clone https://github.com/smartbch/atomic-swap-bot.git
+cd atomic-swap-bot
+
+ego-go build github.com/smartbch/atomic-swap-bot/cmd/asbot
+ego sign asbot
+mkdir data
+ego run asbot \
+	--db-file=bot.db \
+	--bch-rpc-url=http://user:pass@127.0.0.1:48334 \
+	--sbch-rpc-url=http://127.0.0.1:8545 \
+	--sbch-htlc-addr=0x3246D84c930794cDFAABBab954BAc58A7c08b4cd \
+	--sbch-gas-price=1.05 \
+	--bch-timelock=6 \
+	--sbch-timelock=3600 \
+	--penalty-ratio=500 \
+	--fee-ratio=100 \
+	--min-swap-val=0.01 \
+	--max-swap-val=10.0 \
+	--bch-confirmations=0 \
+	--bch-send-fee-rate=2 \
+	--bch-receive-fee-rate=2 \
+	--bch-refund-fee-rate=2 \
+	--sbch-open-gas=500000 \
+	--sbch-close-gas=500000 \
+	--sbch-expire-gas=500000
+```
+
+The above cmd prints something like this and wait inputs:
+```
+EGo v1.3.0 (360a6a40836461465fdbd0742dfb0f980b68c638)
+[erthost] loading enclave ...
+[erthost] entering enclave ...
+[ego] starting application ...
+The ecies pubkey: 03052743d278846f90cedb64282a3ea3db20a8414b627e4aff3dc5408110073eed
+Enter the encrypted BCH WIF (ASIC): 
+```
+
+You can encrypt your BCH/sBCH keys using this cmd (in another shell window):
+
+```bash
+go run github.com/smartbch/atomic-swap-bot/cmd/encrypt
+```
+
+Then feed the encrypted keys into `ego run` cmd and the bot will be started.
+
+
+
 ## htlc cmd
 
 You can use `htlc` cmd to test BCH HTLC covenant using Golang on BCH testnets.
