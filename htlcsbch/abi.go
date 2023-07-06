@@ -535,9 +535,10 @@ const (
 )
 
 var (
-	htlcAbi      abi.ABI
-	OpenEventId  common.Hash
-	CloseEventId common.Hash
+	htlcAbi       abi.ABI
+	OpenEventId   common.Hash
+	CloseEventId  common.Hash
+	ExpireEventId common.Hash
 )
 
 func init() {
@@ -549,6 +550,7 @@ func init() {
 
 	OpenEventId = htlcAbi.Events["Open"].ID
 	CloseEventId = htlcAbi.Events["Close"].ID
+	ExpireEventId = htlcAbi.Events["Expire"].ID
 }
 
 func PackOpen(

@@ -12,10 +12,12 @@ import (
 	"time"
 
 	gethcmn "github.com/ethereum/go-ethereum/common"
+	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/gcash/bchd/bchec"
 	"github.com/gcash/bchd/btcjson"
 	"github.com/gcash/bchd/chaincfg"
+	"github.com/gcash/bchd/wire"
 	"github.com/gcash/bchutil"
 	log "github.com/sirupsen/logrus"
 
@@ -166,11 +168,11 @@ func (bot *MarketMakerBot) GetUTXOs() ([]btcjson.ListUnspentResult, error) {
 func (bot *MarketMakerBot) Loop() {
 	for {
 		log.Info("---------- ", time.Now(), "' ----------")
-		//bot.handleBchRefunds() is called inside scanBchBlocks()
 		bot.handleSbchRefunds()
+		//bot.handleBchRefunds() is called inside scanBchBlocks()
+		//bot.handleBchUserDeposits() is called inside scanBchBlocks()
 		bot.scanBchBlocks()
 		bot.scanSbchEvents()
-		//bot.handleBchUserDeposits() is called inside scanBchBlocks()
 		bot.handleSbchUserDeposits()
 		bot.unlockBchUserDeposits()
 		bot.unlockSbchUserDeposits()
@@ -221,6 +223,19 @@ func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 	}
 	log.Info("got BCH block#", h)
 
+	bot.handleBchDepositTxs(uint64(h), block)
+	bot.handleBchReceiptTxs(block)
+	bot.handleBchRefundTxs(block)
+
+	err = bot.db.setLastBchHeight(uint64(h))
+	if err != nil {
+		log.Fatal("DB error, failed to update last BCH height: ", err)
+	}
+
+	return true
+}
+
+func (bot *MarketMakerBot) handleBchDepositTxs(h uint64, block *wire.MsgBlock) {
 	deposits := htlcbch.GetHtlcDeposits(block, bot.bchPkh)
 	log.Info("HTLC deposits: ", len(deposits))
 	for _, deposit := range deposits {
@@ -244,7 +259,7 @@ func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 		}
 
 		err := bot.db.addBch2SbchRecord(&Bch2SbchRecord{
-			BchLockHeight:  uint64(h),
+			BchLockHeight:  h,
 			BchLockTxHash:  deposit.TxHash,
 			Value:          deposit.Value,
 			RecipientPkh:   toHex(deposit.RecipientPkh),
@@ -259,7 +274,9 @@ func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 			log.Error("DB error, failed to save Bch2SbchRecord: ", err)
 		}
 	}
+}
 
+func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
 	receipts := htlcbch.GetHtlcReceipts(block)
 	log.Info("HTLC receipts: ", len(receipts))
 	for _, receipt := range receipts {
@@ -286,13 +303,10 @@ func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 			log.Error("DB error, failed to update Sbch2Bch record: ", err)
 		}
 	}
+}
 
-	err = bot.db.setLastBchHeight(uint64(h))
-	if err != nil {
-		log.Fatal("DB error, failed to update last BCH height: ", err)
-	}
-
-	return true
+func (bot *MarketMakerBot) handleBchRefundTxs(block *wire.MsgBlock) {
+	// TODO
 }
 
 func (bot *MarketMakerBot) scanSbchEvents() {
@@ -339,112 +353,13 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 
 	for _, ethLog := range logs {
 		log.Info("sBCH log: ", toJSON(ethLog))
-		if ethLog.Topics[0] == htlcsbch.OpenEventId {
-			openLog := htlcsbch.ParseHtlcOpenLog(ethLog)
-			if openLog == nil {
-				continue
-			}
-
-			if openLog.UnlockerAddr != bot.sbchAddr {
-				log.Info("not locked to me",
-					", unlockerAddr: ", openLog.UnlockerAddr.String(),
-					//", botAddr: ", bot.sbchAddr.String(),
-				)
-				continue
-			}
-
-			zeroAddr := gethcmn.Address{}
-			if openLog.BchRecipientPkh == zeroAddr {
-				log.Info("BchRecipientPkh is zero, skip")
-				continue
-			}
-
-			penaltyBPS := openLog.PenaltyBPS
-			if penaltyBPS != bot.penaltyRatio {
-				log.Infof("invalid penaltyRatio: %d != %d",
-					penaltyBPS, bot.penaltyRatio)
-				continue
-			}
-
-			sbchTimeLock := uint32(openLog.UnlockTime - openLog.CreatedTime)
-			if sbchTimeLock != bot.sbchTimeLock {
-				log.Infof("invalid TimeLock: %d != %d",
-					sbchTimeLock, bot.sbchTimeLock)
-				continue
-			}
-
-			valSats := weiToSats(openLog.Value)
-			if valSats < bot.minSwapVal ||
-				(bot.maxSwapVal > 0 && valSats > bot.maxSwapVal) {
-
-				log.Infof("value out of range: %d ∉ [%d, %d]",
-					valSats, bot.minSwapVal, bot.maxSwapVal)
-				continue
-			}
-
-			log.Info("got a sBCH Open log: ", toJSON(openLog))
-			bchTimeLock := sbchTimeLockToBlocks(sbchTimeLock) / 2
-			covenant, err := htlcbch.NewMainnetCovenant(bot.bchPkh,
-				openLog.BchRecipientPkh[:], openLog.HashLock[:], bchTimeLock, 0)
-			if err != nil {
-				log.Error("failed to create HTLC covenant: ", err)
-				continue
-			}
-
-			scriptHash, err := covenant.GetRedeemScriptHash()
-			if err != nil {
-				log.Error("failed to get script hash: ", err)
-				continue
-			}
-
-			err = bot.db.addSbch2BchRecord(&Sbch2BchRecord{
-				SbchLockTime:    openLog.CreatedTime,
-				SbchLockTxHash:  toHex(ethLog.TxHash[:]),
-				Value:           valSats,
-				SbchSenderAddr:  toHex(openLog.LockerAddr[:]),
-				BchRecipientPkh: toHex(openLog.BchRecipientPkh[:]),
-				HashLock:        toHex(openLog.HashLock[:]),
-				TimeLock:        sbchTimeLock,
-				PenaltyBPS:      penaltyBPS,
-				HtlcScriptHash:  toHex(scriptHash),
-			})
-			if err != nil {
-				log.Error("DB error, failed to save Sbch2BchRecord: ", err)
-			}
-		}
-
-		if ethLog.Topics[0] == htlcsbch.CloseEventId {
-			closeLog := htlcsbch.ParseHtlcCloseLog(ethLog)
-			if closeLog == nil {
-				continue
-			}
-
-			log.Info("got a sBCH Close log: ", toJSON(closeLog))
-			hashLock := toHex(closeLog.HashLock[:])
-			record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
-			//log.Info(record)
-			if err != nil {
-				// TODO: change to log.Info
-				log.Error(fmt.Errorf("DB error, can not get Bch2SbchRecord, hashLock=%s, err=%w",
-					hashLock, err))
-				continue
-			}
-
-			hashLock2 := secretToHashLock(closeLog.Secret[:])
-			if hashLock2 != hashLock {
-				log.Warnf("hashLock not match! secret: %s => hashLock: %s, DB hashLock: %s, ",
-					toHex(closeLog.Secret[:]), hashLock2, hashLock)
-				continue
-			}
-
-			record.Secret = toHex(closeLog.Secret[:])
-			record.SbchUnlockTxHash = toHex(ethLog.TxHash[:])
-			record.Status = Bch2SbchStatusSecretRevealed
-			err = bot.db.updateBch2SbchRecord(record)
-			if err != nil {
-				log.Error("DB error, failed to update Bch2SbchRecord: ", err)
-				continue
-			}
+		switch ethLog.Topics[0] {
+		case htlcsbch.OpenEventId:
+			bot.handleSbchOpenEvents(ethLog)
+		case htlcsbch.CloseEventId:
+			bot.handleSbchCloseEvents(ethLog)
+		case htlcsbch.ExpireEventId:
+			bot.handleSbchExpireEvents(ethLog)
 		}
 	}
 
@@ -454,6 +369,118 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 	}
 
 	return true
+}
+
+func (bot *MarketMakerBot) handleSbchOpenEvents(ethLog gethtypes.Log) {
+	openLog := htlcsbch.ParseHtlcOpenLog(ethLog)
+	if openLog == nil {
+		return
+	}
+
+	if openLog.UnlockerAddr != bot.sbchAddr {
+		log.Info("not locked to me",
+			", unlockerAddr: ", openLog.UnlockerAddr.String(),
+			//", botAddr: ", bot.sbchAddr.String(),
+		)
+		return
+	}
+
+	zeroAddr := gethcmn.Address{}
+	if openLog.BchRecipientPkh == zeroAddr {
+		log.Info("BchRecipientPkh is zero, skip")
+		return
+	}
+
+	penaltyBPS := openLog.PenaltyBPS
+	if penaltyBPS != bot.penaltyRatio {
+		log.Infof("invalid penaltyRatio: %d != %d",
+			penaltyBPS, bot.penaltyRatio)
+		return
+	}
+
+	sbchTimeLock := uint32(openLog.UnlockTime - openLog.CreatedTime)
+	if sbchTimeLock != bot.sbchTimeLock {
+		log.Infof("invalid TimeLock: %d != %d",
+			sbchTimeLock, bot.sbchTimeLock)
+		return
+	}
+
+	valSats := weiToSats(openLog.Value)
+	if valSats < bot.minSwapVal ||
+		(bot.maxSwapVal > 0 && valSats > bot.maxSwapVal) {
+
+		log.Infof("value out of range: %d ∉ [%d, %d]",
+			valSats, bot.minSwapVal, bot.maxSwapVal)
+		return
+	}
+
+	log.Info("got a sBCH Open log: ", toJSON(openLog))
+	bchTimeLock := sbchTimeLockToBlocks(sbchTimeLock) / 2
+	covenant, err := htlcbch.NewMainnetCovenant(bot.bchPkh,
+		openLog.BchRecipientPkh[:], openLog.HashLock[:], bchTimeLock, 0)
+	if err != nil {
+		log.Error("failed to create HTLC covenant: ", err)
+		return
+	}
+
+	scriptHash, err := covenant.GetRedeemScriptHash()
+	if err != nil {
+		log.Error("failed to get script hash: ", err)
+		return
+	}
+
+	err = bot.db.addSbch2BchRecord(&Sbch2BchRecord{
+		SbchLockTime:    openLog.CreatedTime,
+		SbchLockTxHash:  toHex(ethLog.TxHash[:]),
+		Value:           valSats,
+		SbchSenderAddr:  toHex(openLog.LockerAddr[:]),
+		BchRecipientPkh: toHex(openLog.BchRecipientPkh[:]),
+		HashLock:        toHex(openLog.HashLock[:]),
+		TimeLock:        sbchTimeLock,
+		PenaltyBPS:      penaltyBPS,
+		HtlcScriptHash:  toHex(scriptHash),
+	})
+	if err != nil {
+		log.Error("DB error, failed to save Sbch2BchRecord: ", err)
+	}
+}
+
+func (bot *MarketMakerBot) handleSbchCloseEvents(ethLog gethtypes.Log) {
+	closeLog := htlcsbch.ParseHtlcCloseLog(ethLog)
+	if closeLog == nil {
+		return
+	}
+
+	log.Info("got a sBCH Close log: ", toJSON(closeLog))
+	hashLock := toHex(closeLog.HashLock[:])
+	record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
+	//log.Info(record)
+	if err != nil {
+		// TODO: change to log.Info
+		log.Error(fmt.Errorf("DB error, can not get Bch2SbchRecord, hashLock=%s, err=%w",
+			hashLock, err))
+		return
+	}
+
+	hashLock2 := secretToHashLock(closeLog.Secret[:])
+	if hashLock2 != hashLock {
+		log.Warnf("hashLock not match! secret: %s => hashLock: %s, DB hashLock: %s, ",
+			toHex(closeLog.Secret[:]), hashLock2, hashLock)
+		return
+	}
+
+	record.Secret = toHex(closeLog.Secret[:])
+	record.SbchUnlockTxHash = toHex(ethLog.TxHash[:])
+	record.Status = Bch2SbchStatusSecretRevealed
+	err = bot.db.updateBch2SbchRecord(record)
+	if err != nil {
+		log.Error("DB error, failed to update Bch2SbchRecord: ", err)
+		return
+	}
+}
+
+func (bot *MarketMakerBot) handleSbchExpireEvents(ethLog gethtypes.Log) {
+	// TODO
 }
 
 func (bot *MarketMakerBot) handleBchUserDeposits() {
@@ -760,6 +787,12 @@ func (bot *MarketMakerBot) handleBchRefunds() {
 			continue
 		}
 
+		record.Status = Sbch2BchStatusBchRefundable
+		err = bot.db.updateSbch2BchRecord(record)
+		if err != nil {
+			log.Error("DB error, failed to save SBCH2BCH record: ", err)
+		}
+
 		log.Info("refund tx: ", htlcbch.MsgTxToHex(tx))
 		txHash, err := bot.bchCli.sendTx(tx)
 		if err != nil {
@@ -818,6 +851,12 @@ func (bot *MarketMakerBot) handleSbchRefunds() {
 		if sbchNow <= txTime+uint64(sbchTimeLock) {
 			log.Info("txTime: ", txTime)
 			continue
+		}
+
+		record.Status = Bch2SbchStatusSbchRefundable
+		err = bot.db.updateBch2SbchRecord(record)
+		if err != nil {
+			log.Error("DB error, failed to update BCH2SBCH record: ", err)
 		}
 
 		hashLock := gethcmn.HexToHash(record.HashLock)

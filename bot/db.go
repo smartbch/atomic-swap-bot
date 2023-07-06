@@ -17,6 +17,7 @@ const (
 	Bch2SbchStatusSbchLocked
 	Bch2SbchStatusSecretRevealed
 	Bch2SbchStatusBchUnlocked
+	Bch2SbchStatusSbchRefundable
 	Bch2SbchStatusSbchRefunded
 	Bch2SbchStatusTooLateToLockSbch
 )
@@ -26,6 +27,7 @@ const (
 	Sbch2BchStatusBchLocked
 	Sbch2BchStatusSecretRevealed
 	Sbch2BchStatusSbchUnlocked
+	Sbch2BchStatusBchRefundable
 	Sbch2BchStatusBchRefunded
 	Sbch2BchStatusTooLateToLockSbch
 )

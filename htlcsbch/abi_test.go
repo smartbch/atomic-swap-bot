@@ -14,6 +14,8 @@ func TestABI(t *testing.T) {
 		OpenEventId.String())
 	require.Equal(t, "0x842eb23b01edb198a935f6cf1ead8ec295651395574206ce5787d42293c5b430",
 		CloseEventId.String())
+	require.Equal(t, "0xbddd9b693ea862fad6ecf78fd51c065be26fda94d1f3cad3a7d691453a38a735",
+		ExpireEventId.String())
 	require.Equal(t, "f4fa2653", hex.EncodeToString(htlcAbi.Methods["open"].ID))
 	require.Equal(t, "f10ca95a", hex.EncodeToString(htlcAbi.Methods["close"].ID))
 	require.Equal(t, "c6441798", hex.EncodeToString(htlcAbi.Methods["expire"].ID))

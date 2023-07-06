@@ -33,6 +33,11 @@ type HtlcReceiptInfo struct {
 	Secret     string // 32 bytes, hex
 }
 
+type HtlcRefundInfo struct {
+	PrevTxHash string // 32 bytes, hex
+	TxHash     string // 32 bytes, hex
+}
+
 // === Deposit ===
 
 func GetHtlcDeposits(block *wire.MsgBlock, recipientPkh []byte) (deposits []*HtlcDepositInfo) {
@@ -189,4 +194,53 @@ func getHtlcReceiptInfo(sigScript []byte) *HtlcReceiptInfo {
 	//hashLock := constructorArgs[0]
 	//recipientPkh := constructorArgs[0]
 	//senderPkh := constructorArgs[0]
+}
+
+// === Refund ===
+
+func GetHtlcRefunds(block *wire.MsgBlock) (refunds []*HtlcRefundInfo) {
+	for _, tx := range block.Transactions {
+		refundInfo := isHtlcRefundTx(tx)
+		if refundInfo != nil {
+			refunds = append(refunds, refundInfo)
+		}
+	}
+	return
+}
+
+func isHtlcRefundTx(tx *wire.MsgTx) *HtlcRefundInfo {
+	if len(tx.TxIn) != 1 && len(tx.TxIn) != 2 {
+		return nil
+	}
+	sigScript := tx.TxIn[0].SignatureScript
+	refundInfo := getHtlcRefundInfo(sigScript)
+	if refundInfo != nil {
+		refundInfo.PrevTxHash = tx.TxIn[0].PreviousOutPoint.Hash.String()
+		refundInfo.TxHash = tx.TxHash().String()
+	}
+	return refundInfo
+}
+
+func getHtlcRefundInfo(sigScript []byte) *HtlcRefundInfo {
+	if !bytes.HasSuffix(sigScript, redeemScriptWithoutConstructorArgs) {
+		return nil
+	}
+	pushes, err := txscript.PushedData(sigScript)
+	if err != nil {
+		return nil
+	}
+	if len(pushes) != 4 {
+		return nil
+	}
+	if len(pushes[0]) != 32 {
+		return nil
+	}
+
+	return &HtlcRefundInfo{}
+
+	// TODO: more checks
+	//senderPk := pushes[0]
+	//senderSig := pushes[1]
+	//sel := pushes[2]
+	//redeemScript := pushes[3]
 }

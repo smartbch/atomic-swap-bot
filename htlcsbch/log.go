@@ -23,6 +23,10 @@ type CloseLog struct {
 	Secret   common.Hash
 }
 
+type ExpireLog struct {
+	HashLock common.Hash
+}
+
 func ParseHtlcOpenLog(log types.Log) *OpenLog {
 	if len(log.Topics) != 3 ||
 		log.Topics[0] != OpenEventId ||
@@ -51,6 +55,16 @@ func ParseHtlcCloseLog(log types.Log) *CloseLog {
 	return &CloseLog{
 		HashLock: log.Topics[1],
 		Secret:   log.Topics[2],
+	}
+}
+
+func ParseHtlcExpireLog(log types.Log) *ExpireLog {
+	if len(log.Topics) != 2 ||
+		log.Topics[0] != ExpireEventId {
+		return nil
+	}
+	return &ExpireLog{
+		HashLock: log.Topics[1],
 	}
 }
 
