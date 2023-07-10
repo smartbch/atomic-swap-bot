@@ -222,7 +222,7 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 		bchTimeLock:     72,
 		serviceFeeRatio: 100,
 	}
-	_bot.scanBchBlocks()
+	_bot.handleBchUserDeposits()
 
 	unhandled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
 	require.NoError(t, err)
@@ -317,7 +317,7 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 		bchPkh:      _botPkh,
 		bchTimeLock: 72,
 	}
-	_bot.scanBchBlocks()
+	_bot.handleBchUserDeposits()
 
 	unhandled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
 	require.NoError(t, err)
@@ -978,7 +978,7 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 		bchAddr:    testBchAddr,
 	}
 
-	_bot.scanBchBlocks()
+	_bot.handleBchRefunds(true)
 
 	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchRefunded, 100)
 	require.NoError(t, err)

@@ -49,9 +49,9 @@ func TestParseHtlcCloseLog(t *testing.T) {
 	logJson := `{
   "address": "0xc03a886b25cabc20db49170981ef118693e807d9",
   "topics": [
-	"0x842eb23b01edb198a935f6cf1ead8ec295651395574206ce5787d42293c5b430",
-	"0x3bd34fe3485138a7be6f1be4a1d3c23661090d2c95af969c5c73fee04089ab06",
-	"0x3163666434353566623035326435363964633361363337636263373065390000"
+	  "0x842eb23b01edb198a935f6cf1ead8ec295651395574206ce5787d42293c5b430",
+	  "0x3bd34fe3485138a7be6f1be4a1d3c23661090d2c95af969c5c73fee04089ab06",
+	  "0x3163666434353566623035326435363964633361363337636263373065390000"
   ],
   "data": "0x",
   "blockNumber": "0x966838",
@@ -72,4 +72,30 @@ func TestParseHtlcCloseLog(t *testing.T) {
 		closeLog.HashLock.String())
 	require.Equal(t, "0x3163666434353566623035326435363964633361363337636263373065390000",
 		closeLog.Secret.String())
+}
+
+func TestParseExpireLog(t *testing.T) {
+	logJson := `{
+  "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "topics": [
+    "0xbddd9b693ea862fad6ecf78fd51c065be26fda94d1f3cad3a7d691453a38a735",
+    "0xed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf3"
+  ],
+  "data": "0x",
+  "blockNumber": "0x4",
+  "transactionHash": "0xda0ae40abf70d204a1bdcc012ea97dd06f85842c9b36e08d66c16a23c5aab027",
+  "transactionIndex": "0x0",
+  "blockHash": "0x80f2a0785c21778ddc28896448756b93d38c751a2b360ddd9e660019d7411304",
+  "logIndex": "0x0",
+  "removed": false
+}`
+
+	var log types.Log
+	err := json.Unmarshal([]byte(logJson), &log)
+	require.NoError(t, err)
+
+	expireLog := ParseHtlcExpireLog(log)
+	require.NotNil(t, expireLog)
+	require.Equal(t, "0xed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf3",
+		expireLog.HashLock.String())
 }
