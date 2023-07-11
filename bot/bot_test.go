@@ -503,7 +503,7 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 		bchPkh:  testBchPkh,
 	}
 
-	_bot.handleSbchRefunds()
+	_bot.refundLockedSbch()
 
 	secretRevealed, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusSbchRefunded, 100)
 	require.NoError(t, err)
@@ -978,7 +978,7 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 		bchAddr:    testBchAddr,
 	}
 
-	_bot.handleBchRefunds(true)
+	_bot.refundLockedBCH(true)
 
 	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchRefunded, 100)
 	require.NoError(t, err)

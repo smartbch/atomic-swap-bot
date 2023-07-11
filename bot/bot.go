@@ -25,6 +25,54 @@ import (
 	"github.com/smartbch/atomic-swap-bot/htlcsbch"
 )
 
+/*
+
++------------------------+----------------+----------------+
+| BCH2SBCH: normal       | old status     | new status     |
++------------------------+----------------+----------------+
+| handleBchDepositTxs    |                | New            |
+| handleBchUserDeposits  | New            | SbchLocked     |
+| handleSbchCloseEvents  | SbchLocked     | SecretRevealed |
+| unlockBchUserDeposits  | SecretRevealed | BchUnlocked    |
++------------------------+----------------+----------------+
++------------------------+----------------+----------------+
+| BCH2SBCH: refund       | old status     | new status     |
++------------------------+----------------+----------------+
+| handleBchDepositTxs    |                | New            |
+| handleBchUserDeposits  | New            | SbchLocked     |
+| refundLockedSbch       | SbchLocked     | SbchRefunded   |
++------------------------+----------------+----------------+
++------------------------+----------------+----------------+
+| BCH2SBCH: too late     | old status     | new status     |
++------------------------+----------------+----------------+
+| handleBchDepositTxs    |                | New            |
+| handleBchUserDeposits  | New            | TooLate        |
++------------------------+----------------+----------------+
+
++------------------------+----------------+----------------+
+| SBCH2BCH: normal       | old status     | new status     |
++------------------------+----------------+----------------+
+| handleSbchOpenEvents   |                | New            |
+| handleSbchUserDeposits | New            | BchLocked      |
+| handleBchReceiptTxs    | BchLocked      | SecretRevealed |
+| unlockSbchUserDeposits | SecretRevealed | SbchUnlocked   |
++------------------------+----------------+----------------+
++------------------------+----------------+----------------+
+| SBCH2BCH: refund       | old status     | new status     |
++------------------------+----------------+----------------+
+| handleSbchOpenEvents   |                | New            |
+| handleSbchUserDeposits | New            | BchLocked      |
+| refundLockedBCH        | BchLocked      | BchRefunded    |
++------------------------+----------------+----------------+
++------------------------+----------------+----------------+
+| SBCH2BCH: too late     | old status     | new status     |
++------------------------+----------------+----------------+
+| handleSbchOpenEvents   |                | New            |
+| handleSbchUserDeposits | New            | TooLate        |
++------------------------+----------------+----------------+
+
+*/
+
 type MarketMakerBot struct {
 	db      DB
 	bchCli  IBchClient
@@ -168,11 +216,11 @@ func (bot *MarketMakerBot) GetUTXOs() ([]btcjson.ListUnspentResult, error) {
 func (bot *MarketMakerBot) Loop() {
 	for {
 		log.Info("---------- ", time.Now(), "' ----------")
+		bot.refundLockedSbch()
 		gotNewBlocks := bot.scanBchBlocks()
-		bot.handleBchRefunds(gotNewBlocks)
+		bot.refundLockedBCH(gotNewBlocks)
 		bot.handleBchUserDeposits()
 		bot.unlockBchUserDeposits()
-		bot.handleSbchRefunds()
 		bot.scanSbchEvents()
 		bot.handleSbchUserDeposits()
 		bot.unlockSbchUserDeposits()
@@ -180,6 +228,7 @@ func (bot *MarketMakerBot) Loop() {
 	}
 }
 
+// scan & handle BCH blocks
 func (bot *MarketMakerBot) scanBchBlocks() (gotNewBlocks bool) {
 	log.Info("scan BCH blocks ...")
 	lastBlockNum, err := bot.db.getLastBchHeight()
@@ -213,6 +262,7 @@ func (bot *MarketMakerBot) scanBchBlocks() (gotNewBlocks bool) {
 	return gotNewBlocks
 }
 
+// handle BCH lock|unlock|expire txs
 func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 	//log.Info("get BCH block#", h, " ...")
 	block, err := bot.bchCli.getBlock(h)
@@ -300,10 +350,10 @@ func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
 			continue
 		}
 
-		if record.Status != Sbch2BchStatusBchLocked {
-			log.Infof("wrong status: %s", toJSON(record))
-			continue
-		}
+		//if record.Status != Sbch2BchStatusBchLocked {
+		//	log.Infof("wrong status: %s", toJSON(record))
+		//	continue
+		//}
 
 		record.Secret = receipt.Secret
 		record.BchUnlockTxHash = receipt.TxHash
@@ -316,24 +366,24 @@ func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
 
 	// bch2sbch
 	// TODO: add more checks
-	for _, receipt := range receipts {
-		hashLock := secretToHashLock(gethcmn.FromHex(receipt.Secret))
-		record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
-		if err != nil {
-			continue
-		}
-		if record.Status != Bch2SbchStatusSecretRevealed {
-			continue
-		}
-
-		log.Info("HTLC receipt (BCH unlocked by others):", toJSON(receipt))
-		record.Status = Bch2SbchStatusBchUnlocked
-		record.BchUnlockTxHash = receipt.TxHash
-		err = bot.db.updateBch2SbchRecord(record)
-		if err != nil {
-			log.Error("failed to update status of Bch2SbchRecord: ", err)
-		}
-	}
+	//for _, receipt := range receipts {
+	//	hashLock := secretToHashLock(gethcmn.FromHex(receipt.Secret))
+	//	record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
+	//	if err != nil {
+	//		continue
+	//	}
+	//	if record.Status != Bch2SbchStatusSecretRevealed {
+	//		continue
+	//	}
+	//
+	//	log.Info("HTLC receipt (BCH unlocked by others):", toJSON(receipt))
+	//	record.Status = Bch2SbchStatusBchUnlocked
+	//	record.BchUnlockTxHash = receipt.TxHash
+	//	err = bot.db.updateBch2SbchRecord(record)
+	//	if err != nil {
+	//		log.Error("failed to update status of Bch2SbchRecord: ", err)
+	//	}
+	//}
 }
 
 // find BCH refund txs
@@ -422,6 +472,7 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 	return true
 }
 
+// find sBCH open events, create sbch2bch records (status = new)
 func (bot *MarketMakerBot) handleSbchOpenEvents(ethLog gethtypes.Log) {
 	openLog := htlcsbch.ParseHtlcOpenLog(ethLog)
 	if openLog == nil {
@@ -496,6 +547,7 @@ func (bot *MarketMakerBot) handleSbchOpenEvents(ethLog gethtypes.Log) {
 	}
 }
 
+// bch2sbch records: SbchLocked => SecretRevealed
 func (bot *MarketMakerBot) handleSbchCloseEvents(ethLog gethtypes.Log) {
 	closeLog := htlcsbch.ParseHtlcCloseLog(ethLog)
 	if closeLog == nil {
@@ -534,6 +586,7 @@ func (bot *MarketMakerBot) handleSbchExpireEvents(ethLog gethtypes.Log) {
 	// TODO
 }
 
+// bch2sbch records: New => SbchLocked|TooLateToLockSbch
 func (bot *MarketMakerBot) handleBchUserDeposits() {
 	log.Info("handle BCH user deposits ...")
 	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
@@ -595,6 +648,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 	}
 }
 
+// sbch2bch records: New => BchLocked|TooLateToLockSbch
 func (bot *MarketMakerBot) handleSbchUserDeposits() {
 	log.Info("handle sBCH user deposits ...")
 
@@ -702,6 +756,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 	}
 }
 
+// bch2sbch records: SecretRevealed => BchUnlocked
 func (bot *MarketMakerBot) unlockBchUserDeposits() {
 	log.Info("unlock BCH user deposits ...")
 	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusSecretRevealed, 100)
@@ -757,6 +812,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 	}
 }
 
+// sbch2bch: SecretRevealed => SbchUnlocked
 func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 	log.Info("unlock sBCH user deposits ...")
 	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusSecretRevealed, 100)
@@ -785,7 +841,8 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 	}
 }
 
-func (bot *MarketMakerBot) handleBchRefunds(gotNewBlocks bool) {
+// sbch2bch records: BchLocked => BchRefunded
+func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 	if !gotNewBlocks {
 		return
 	}
@@ -866,7 +923,8 @@ func (bot *MarketMakerBot) handleBchRefunds(gotNewBlocks bool) {
 	}
 }
 
-func (bot *MarketMakerBot) handleSbchRefunds() {
+// bch2sbch records: SbchLocked => SbchRefunded
+func (bot *MarketMakerBot) refundLockedSbch() {
 	log.Info("handle sBCH refunds ...")
 
 	// TODO: order by SbchLockTxTime ASC
