@@ -35,15 +35,22 @@ func TestUtxoAmtToSats(t *testing.T) {
 }
 
 func TestBch2Sbch_userLockBch(t *testing.T) {
+	_botPkh := testBchPkh
 	_userPkh := gethAddrBytes("user")
 	_hashLock := gethHash32Bytes("hash")
+	_hashLock2 := gethHash32Bytes("hash2")
 	_timeLock := uint16(100)
 	_penaltyBPS := uint16(500)
 	_evmAddr := gethAddrBytes("evm")
 
-	covenant, err := htlcbch.NewMainnetCovenant(_userPkh, testBchPkh, _hashLock, _timeLock, _penaltyBPS)
+	covenant, err := htlcbch.NewMainnetCovenant(_userPkh, _botPkh, _hashLock, _timeLock, _penaltyBPS)
 	require.NoError(t, err)
 	scriptHash, err := covenant.GetRedeemScriptHash()
+	require.NoError(t, err)
+
+	covenant2, err := htlcbch.NewMainnetCovenant(_userPkh, _userPkh, _hashLock2, _timeLock, _penaltyBPS)
+	require.NoError(t, err)
+	scriptHash2, err := covenant2.GetRedeemScriptHash()
 	require.NoError(t, err)
 
 	_db := initDB(t, 123, 456)
@@ -58,7 +65,23 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 						PkScript: newP2SHPkScript(scriptHash),
 					},
 					{
-						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr),
+						PkScript: newHtlcDepositOpRet(_botPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr),
+					},
+				},
+			},
+		},
+	}
+	_bchCli.blocks[127] = &wire.MsgBlock{
+		Transactions: []*wire.MsgTx{
+			{
+				TxIn: []*wire.TxIn{},
+				TxOut: []*wire.TxOut{
+					{
+						Value:    12345678,
+						PkScript: newP2SHPkScript(scriptHash2),
+					},
+					{
+						PkScript: newHtlcDepositOpRet(_userPkh, _userPkh, _hashLock2, _timeLock, _penaltyBPS, _evmAddr),
 					},
 				},
 			},
@@ -69,7 +92,7 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 		db:           _db,
 		bchCli:       _bchCli,
 		bchPrivKey:   testBchPrivKey,
-		bchPkh:       testBchPkh,
+		bchPkh:       _botPkh,
 		bchTimeLock:  _timeLock,
 		penaltyRatio: _penaltyBPS,
 	}
@@ -87,7 +110,7 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 	require.Equal(t, uint64(126), record0.BchLockHeight)
 	require.Equal(t, _bchCli.blocks[126].Transactions[0].TxHash().String(), record0.BchLockTxHash)
 	require.Equal(t, uint64(_bchCli.blocks[126].Transactions[0].TxOut[0].Value), record0.Value)
-	require.Equal(t, toHex(testBchPkh), record0.RecipientPkh)
+	require.Equal(t, toHex(_botPkh), record0.RecipientPkh)
 	require.Equal(t, toHex(_userPkh), record0.SenderPkh)
 	require.Equal(t, toHex(_hashLock), record0.HashLock)
 	require.Equal(t, uint32(_timeLock), record0.TimeLock)
@@ -220,7 +243,7 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 		bchTimeLock:     72,
 		serviceFeeRatio: 100,
 	}
-	_bot.handleBchUserDepositsM()
+	_bot.handleBchUserDeposits()
 
 	unhandled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
 	require.NoError(t, err)
@@ -315,7 +338,7 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 		bchPkh:      _botPkh,
 		bchTimeLock: 72,
 	}
-	_bot.handleBchUserDepositsM()
+	_bot.handleBchUserDeposits()
 
 	unhandled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
 	require.NoError(t, err)
@@ -947,7 +970,7 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 		sbchTimeLock: _timeLock,
 	}
 
-	_bot.handleSbchUserDepositsM()
+	_bot.handleSbchUserDeposits()
 
 	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
 	require.NoError(t, err)
@@ -1006,7 +1029,7 @@ func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
 		sbchTimeLock: _timeLock,
 	}
 
-	_bot.handleSbchUserDepositsM()
+	_bot.handleSbchUserDeposits()
 
 	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
 	require.NoError(t, err)
@@ -1227,3 +1250,79 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 		record0.BchRefundTxHash)
 	require.Equal(t, Sbch2BchStatusBchRefunded, record0.Status)
 }
+
+// TODO
+/*
+func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
+	_botPkh := testBchPkh
+	_userPkh := gethAddrBytes("user")
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
+	_val := uint64(12345678)
+	_userEvmAddr := gethAddr("uevm")
+	_hashLock := gethHash32Bytes("hashlock")
+	_lockTime := uint64(time.Now().Unix())
+	_sbchTimeLock := uint32(36000)
+	_bchTimeLock := uint16(60)
+	_userBchPkh := gethAddrBytes("ubch")
+	_scriptHash := gethAddrBytes("htlc")
+	_penaltyBPS := uint16(500)
+
+	_db := initDB(t, 123, 456)
+	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
+		SbchLockTime:     _lockTime,
+		SbchLockTxHash:   toHex(_sbchLockTxHash),
+		Value:            _val,
+		SbchSenderAddr:   _userEvmAddr.String(),
+		BchRecipientPkh:  toHex(_userBchPkh),
+		HashLock:         toHex(_hashLock),
+		TimeLock:         _sbchTimeLock,
+		HtlcScriptHash:   toHex(_scriptHash),
+		BchLockTxHash:    "",
+		Secret:           "",
+		SbchUnlockTxHash: "",
+		Status:           Sbch2BchStatusNew,
+	}))
+
+	covenant, err := htlcbch.NewMainnetCovenant(_botPkh, _userPkh, _hashLock, _bchTimeLock, _penaltyBPS)
+	require.NoError(t, err)
+	scriptHash, err := covenant.GetRedeemScriptHash()
+	require.NoError(t, err)
+
+	_bchCli := &MockBchClient{}
+	_bchCli.blocks[126] = &wire.MsgBlock{
+		Transactions: []*wire.MsgTx{
+			{
+				TxIn: []*wire.TxIn{},
+				TxOut: []*wire.TxOut{
+					{
+						Value:    12345678,
+						PkScript: newP2SHPkScript(scriptHash),
+					},
+					{
+						PkScript: newHtlcDepositOpRet(_botPkh, _userPkh, _hashLock, _bchTimeLock, _penaltyBPS, _userEvmAddr[:]),
+					},
+				},
+			},
+		},
+	}
+
+	_bot := &MarketMakerBot{
+		db:           _db,
+		bchCli:       _bchCli,
+		bchPrivKey:   testBchPrivKey,
+		bchPkh:       testBchPkh,
+		sbchAddr:     testEvmAddr,
+		sbchTimeLock: _sbchTimeLock,
+	}
+
+	_bot.scanBchBlocks()
+
+	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
+	require.NoError(t, err)
+	require.Len(t, records, 0)
+
+	toLate, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusTooLateToLockSbch, 100)
+	require.NoError(t, err)
+	require.Len(t, toLate, 1)
+}
+*/

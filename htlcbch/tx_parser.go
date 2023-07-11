@@ -40,9 +40,9 @@ type HtlcRefundInfo struct {
 
 // === Deposit ===
 
-func GetHtlcDeposits(block *wire.MsgBlock, recipientPkh []byte) (deposits []*HtlcDepositInfo) {
+func GetHtlcDeposits(block *wire.MsgBlock) (deposits []*HtlcDepositInfo) {
 	for _, tx := range block.Transactions {
-		depositInfo := isHtlcDepositTx(tx, recipientPkh)
+		depositInfo := isHtlcDepositTx(tx)
 		if depositInfo != nil {
 			deposits = append(deposits, depositInfo)
 		}
@@ -51,7 +51,7 @@ func GetHtlcDeposits(block *wire.MsgBlock, recipientPkh []byte) (deposits []*Htl
 }
 
 // output#0: deposit, output#1: op_return
-func isHtlcDepositTx(tx *wire.MsgTx, recipientPkh []byte) *HtlcDepositInfo {
+func isHtlcDepositTx(tx *wire.MsgTx) *HtlcDepositInfo {
 	if len(tx.TxOut) < 2 {
 		return nil
 	}
@@ -64,9 +64,7 @@ func isHtlcDepositTx(tx *wire.MsgTx, recipientPkh []byte) *HtlcDepositInfo {
 
 	// output#1 must be NULL DATA that contains the HTLC info
 	depositInfo := getHtlcDepositInfo(tx.TxOut[1].PkScript)
-	if depositInfo == nil ||
-		!bytes.Equal(depositInfo.RecipientPkh, recipientPkh) {
-
+	if depositInfo == nil {
 		return nil
 	}
 

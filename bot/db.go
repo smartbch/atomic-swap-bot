@@ -192,6 +192,12 @@ func (db DB) getBch2SbchRecordByHashLock(hashLock string) (record *Bch2SbchRecor
 	return record, result.Error
 }
 
+func (db DB) getSbch2BchRecordByHashLock(hashLock string) (record *Sbch2BchRecord, err error) {
+	record = &Sbch2BchRecord{}
+	result := db.db.Where("hash_lock = ?", hashLock).First(record)
+	return record, result.Error
+}
+
 func (db DB) getSbch2BchRecordByBchLockTxHash(txHashHex string) (record *Sbch2BchRecord, err error) {
 	record = &Sbch2BchRecord{}
 	result := db.db.Where("bch_lock_tx_hash = ?", txHashHex).First(record)
