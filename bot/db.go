@@ -68,7 +68,6 @@ type Sbch2BchRecord struct {
 	TimeLock         uint32         `gorm:"not null"` // got from event, in Seconds
 	PenaltyBPS       uint16         `gorm:"not null"` // got from event
 	HtlcScriptHash   string         `gorm:"not null"` // calculated by bot
-	BchLockBlockNum  uint64         ``                // set when status changed to Sbch2BchStatusBchLocked
 	BchLockTxHash    string         ``                // set when status changed to Sbch2BchStatusBchLocked
 	BchUnlockTxHash  string         ``                // set when status changed to Sbch2BchStatusSecretRevealed
 	Secret           string         ``                // set when status changed to Sbch2BchStatusSecretRevealed

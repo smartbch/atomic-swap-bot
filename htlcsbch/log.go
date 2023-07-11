@@ -19,11 +19,13 @@ type OpenLog struct {
 }
 
 type CloseLog struct {
+	TxHash   common.Hash
 	HashLock common.Hash
 	Secret   common.Hash
 }
 
 type ExpireLog struct {
+	TxHash   common.Hash
 	HashLock common.Hash
 }
 
@@ -53,6 +55,7 @@ func ParseHtlcCloseLog(log types.Log) *CloseLog {
 		return nil
 	}
 	return &CloseLog{
+		TxHash:   log.TxHash,
 		HashLock: log.Topics[1],
 		Secret:   log.Topics[2],
 	}
@@ -64,6 +67,7 @@ func ParseHtlcExpireLog(log types.Log) *ExpireLog {
 		return nil
 	}
 	return &ExpireLog{
+		TxHash:   log.TxHash,
 		HashLock: log.Topics[1],
 	}
 }

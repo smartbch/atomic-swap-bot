@@ -678,6 +678,74 @@ func TestBch2Sbch_handleBchReceiptTxs(t *testing.T) {
 		record0.BchUnlockTxHash)
 }
 
+func TestBch2Sbch_handleSbchExpireEvent(t *testing.T) {
+	_val := uint64(12345678)
+	_secret := gethHash32("secret")
+	_bchLockTxHash := gethHash32("bchlock")
+	_userPkh := gethAddrBytes("user")
+	_hashLock := sha256.Sum256(_secret[:])
+	_timeLock := uint32(72)
+	_evmAddr := gethAddrBytes("evm")
+	_scriptHash := gethAddrBytes("htlc")
+	_sbchLockTxHash := gethHash32("sbchlock")
+	_sbchRefundTxHash := gethHash32("sbchrefund")
+	_sbchNow := uint64(time.Now().Unix())
+	_sbchLockTxTime := _sbchNow - 22000
+
+	_db := initDB(t, 123, 456)
+	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
+		BchLockHeight:  122,
+		BchLockTxHash:  toHex(_bchLockTxHash.Bytes()),
+		Value:          _val,
+		RecipientPkh:   toHex(testBchPkh),
+		SenderPkh:      toHex(_userPkh),
+		HashLock:       toHex(_hashLock[:]),
+		TimeLock:       _timeLock,
+		SenderEvmAddr:  toHex(_evmAddr),
+		HtlcScriptHash: toHex(_scriptHash),
+		SbchLockTxTime: _sbchLockTxTime,
+		SbchLockTxHash: toHex(_sbchLockTxHash[:]),
+		Status:         Bch2SbchStatusSbchLocked,
+	}))
+
+	_sbchCli := newMockSbchClient(457, 999, _sbchNow)
+	_sbchCli.logs[458] = []gethtypes.Log{
+		{
+			BlockNumber: 458,
+			TxHash:      _sbchRefundTxHash,
+			Topics: []gethcmn.Hash{
+				htlcsbch.ExpireEventId,
+				_hashLock,
+			},
+		},
+	}
+	_bot := &MarketMakerBot{
+		db:      _db,
+		sbchCli: _sbchCli,
+		bchPkh:  testBchPkh,
+	}
+
+	_bot.handleSbchEvents(457, 500)
+
+	secretRevealed, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusSbchRefunded, 100)
+	require.NoError(t, err)
+	require.Len(t, secretRevealed, 1)
+	record0 := secretRevealed[0]
+	require.Equal(t, toHex(_bchLockTxHash.Bytes()), record0.BchLockTxHash)
+	require.Equal(t, _val, record0.Value)
+	require.Equal(t, toHex(testBchPkh), record0.RecipientPkh)
+	require.Equal(t, toHex(_userPkh), record0.SenderPkh)
+	require.Equal(t, toHex(_hashLock[:]), record0.HashLock)
+	require.Equal(t, _timeLock, record0.TimeLock)
+	require.Equal(t, toHex(_evmAddr), record0.SenderEvmAddr)
+	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
+	require.Equal(t, toHex(_sbchLockTxHash[:]), record0.SbchLockTxHash)
+	require.Equal(t, "", record0.BchUnlockTxHash)
+	require.Equal(t, "73626368726566756e6400000000000000000000000000000000000000000000",
+		record0.SbchRefundTxHash)
+	require.Equal(t, Bch2SbchStatusSbchRefunded, record0.Status)
+}
+
 func TestSbch2Bch_userLockSbch(t *testing.T) {
 	_sbchLockTxHash := gethHash32("sbchlocktx")
 	_userEvmAddr := gethAddr("uevm")

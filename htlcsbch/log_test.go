@@ -68,6 +68,8 @@ func TestParseHtlcCloseLog(t *testing.T) {
 
 	closeLog := ParseHtlcCloseLog(log)
 	require.NotNil(t, closeLog)
+	require.Equal(t, "0x576788bdc7c221a4cf6c2670f7aa54062599f45a1806afe60e46d34a5cee8ae8",
+		closeLog.TxHash.String())
 	require.Equal(t, "0x3bd34fe3485138a7be6f1be4a1d3c23661090d2c95af969c5c73fee04089ab06",
 		closeLog.HashLock.String())
 	require.Equal(t, "0x3163666434353566623035326435363964633361363337636263373065390000",
@@ -96,6 +98,8 @@ func TestParseExpireLog(t *testing.T) {
 
 	expireLog := ParseHtlcExpireLog(log)
 	require.NotNil(t, expireLog)
+	require.Equal(t, "0xda0ae40abf70d204a1bdcc012ea97dd06f85842c9b36e08d66c16a23c5aab027",
+		expireLog.TxHash.String())
 	require.Equal(t, "0xed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf3",
 		expireLog.HashLock.String())
 }
