@@ -27,49 +27,49 @@ import (
 
 /*
 
-+------------------------+----------------+----------------+
-| BCH2SBCH: normal       | old status     | new status     |
-+------------------------+----------------+----------------+
-| handleBchDepositTxs    |                | New            |
-| handleBchUserDeposits  | New            | SbchLocked     |
-| handleSbchCloseEvent   | SbchLocked     | SecretRevealed |
-| unlockBchUserDeposits  | SecretRevealed | BchUnlocked    |
-+------------------------+----------------+----------------+
-+------------------------+----------------+----------------+
-| BCH2SBCH: refund       | old status     | new status     |
-+------------------------+----------------+----------------+
-| handleBchDepositTxs    |                | New            |
-| handleBchUserDeposits  | New            | SbchLocked     |
-| refundLockedSbch       | SbchLocked     | SbchRefunded   |
-+------------------------+----------------+----------------+
-+------------------------+----------------+----------------+
-| BCH2SBCH: too late     | old status     | new status     |
-+------------------------+----------------+----------------+
-| handleBchDepositTxs    |                | New            |
-| handleBchUserDeposits  | New            | TooLate        |
-+------------------------+----------------+----------------+
++-------------------------+----------------+----------------+
+| BCH2SBCH: normal        | old status     | new status     |
++-------------------------+----------------+----------------+
+| handleBchDepositTxs     |                | New            |
+| handleBchUserDepositsM  | New            | SbchLocked     |
+| handleSbchCloseEvent    | SbchLocked     | SecretRevealed |
+| unlockBchUserDeposits   | SecretRevealed | BchUnlocked    |
++-------------------------+----------------+----------------+
++-------------------------+----------------+----------------+
+| BCH2SBCH: refund        | old status     | new status     |
++-------------------------+----------------+----------------+
+| handleBchDepositTxs     |                | New            |
+| handleBchUserDepositsM  | New            | SbchLocked     |
+| refundLockedSbch        | SbchLocked     | SbchRefunded   |
++-------------------------+----------------+----------------+
++-------------------------+----------------+----------------+
+| BCH2SBCH: too late      | old status     | new status     |
++-------------------------+----------------+----------------+
+| handleBchDepositTxs     |                | New            |
+| handleBchUserDepositsM  | New            | TooLate        |
++-------------------------+----------------+----------------+
 
-+------------------------+----------------+----------------+
-| SBCH2BCH: normal       | old status     | new status     |
-+------------------------+----------------+----------------+
-| handleSbchOpenEvent    |                | New            |
-| handleSbchUserDeposits | New            | BchLocked      |
-| handleBchReceiptTxs    | BchLocked      | SecretRevealed |
-| unlockSbchUserDeposits | SecretRevealed | SbchUnlocked   |
-+------------------------+----------------+----------------+
-+------------------------+----------------+----------------+
-| SBCH2BCH: refund       | old status     | new status     |
-+------------------------+----------------+----------------+
-| handleSbchOpenEvent    |                | New            |
-| handleSbchUserDeposits | New            | BchLocked      |
-| refundLockedBCH        | BchLocked      | BchRefunded    |
-+------------------------+----------------+----------------+
-+------------------------+----------------+----------------+
-| SBCH2BCH: too late     | old status     | new status     |
-+------------------------+----------------+----------------+
-| handleSbchOpenEvent    |                | New            |
-| handleSbchUserDeposits | New            | TooLate        |
-+------------------------+----------------+----------------+
++-------------------------+----------------+----------------+
+| SBCH2BCH: normal        | old status     | new status     |
++-------------------------+----------------+----------------+
+| handleSbchOpenEventM    |                | New            |
+| handleSbchUserDepositsM | New            | BchLocked      |
+| handleBchReceiptTxs     | BchLocked      | SecretRevealed |
+| unlockSbchUserDeposits  | SecretRevealed | SbchUnlocked   |
++-------------------------+----------------+----------------+
++-------------------------+----------------+----------------+
+| SBCH2BCH: refund        | old status     | new status     |
++-------------------------+----------------+----------------+
+| handleSbchOpenEventM    |                | New            |
+| handleSbchUserDepositsM | New            | BchLocked      |
+| refundLockedBCH         | BchLocked      | BchRefunded    |
++-------------------------+----------------+----------------+
++-------------------------+----------------+----------------+
+| SBCH2BCH: too late      | old status     | new status     |
++-------------------------+----------------+----------------+
+| handleSbchOpenEventM    |                | New            |
+| handleSbchUserDepositsM | New            | TooLate        |
++-------------------------+----------------+----------------+
 
 */
 
@@ -80,7 +80,6 @@ type MarketMakerBot struct {
 
 	// BCH key
 	bchPrivKey *bchec.PrivateKey
-	bchPubKey  []byte
 	bchPkh     []byte
 	bchAddr    bchutil.Address // P2PKH
 
@@ -172,7 +171,6 @@ func NewBot(
 		db:                     db,
 		bchCli:                 bchCli,
 		bchPrivKey:             bchPrivKey,
-		bchPubKey:              bchPbk,
 		bchPkh:                 bchPkh,
 		bchAddr:                bchAddr,
 		sbchCli:                sbchCli,
@@ -224,10 +222,10 @@ func (bot *MarketMakerBot) Loop() {
 		bot.refundLockedSbch()
 		gotNewBlocks := bot.scanBchBlocks()
 		bot.refundLockedBCH(gotNewBlocks)
-		bot.handleBchUserDeposits()
+		bot.handleBchUserDepositsM()
 		bot.unlockBchUserDeposits()
 		bot.scanSbchEvents()
-		bot.handleSbchUserDeposits()
+		bot.handleSbchUserDepositsM()
 		bot.unlockSbchUserDeposits()
 		time.Sleep(2 * time.Second)
 	}
@@ -371,24 +369,29 @@ func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
 
 	// bch2sbch
 	// TODO: add more checks
-	//for _, receipt := range receipts {
-	//	hashLock := secretToHashLock(gethcmn.FromHex(receipt.Secret))
-	//	record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
-	//	if err != nil {
-	//		continue
-	//	}
-	//	if record.Status != Bch2SbchStatusSecretRevealed {
-	//		continue
-	//	}
-	//
-	//	log.Info("HTLC receipt (BCH unlocked by others):", toJSON(receipt))
-	//	record.Status = Bch2SbchStatusBchUnlocked
-	//	record.BchUnlockTxHash = receipt.TxHash
-	//	err = bot.db.updateBch2SbchRecord(record)
-	//	if err != nil {
-	//		log.Error("failed to update status of Bch2SbchRecord: ", err)
-	//	}
-	//}
+	for _, receipt := range receipts {
+		hashLock := secretToHashLock(gethcmn.FromHex(receipt.Secret))
+		record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
+		if err != nil {
+			continue
+		}
+		if record.Status != Bch2SbchStatusSecretRevealed {
+			continue
+		}
+		if receipt.PrevTxHash != record.BchLockTxHash {
+			log.Info("receipt.PrevTxHash != record.BchLockTxHash: ",
+				receipt.PrevTxHash, " != ", record.BchLockTxHash)
+			continue
+		}
+
+		log.Info("HTLC receipt (BCH unlocked by others):", toJSON(receipt))
+		record.Status = Bch2SbchStatusBchUnlocked
+		record.BchUnlockTxHash = receipt.TxHash
+		err = bot.db.updateBch2SbchRecord(record)
+		if err != nil {
+			log.Error("failed to update status of Bch2SbchRecord: ", err)
+		}
+	}
 }
 
 // find BCH refund txs
@@ -461,8 +464,8 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 		log.Info("sBCH log: ", toJSON(ethLog))
 		switch ethLog.Topics[0] {
 		case htlcsbch.OpenEventId:
-			bot.handleSbchOpenEvent(ethLog)
-			bot.handleSbchOpenEventSlaveMode(ethLog)
+			bot.handleSbchOpenEventM(ethLog)
+			bot.handleSbchOpenEventS(ethLog)
 		case htlcsbch.CloseEventId:
 			bot.handleSbchCloseEvent(ethLog)
 		case htlcsbch.ExpireEventId:
@@ -479,7 +482,7 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 }
 
 // find sBCH open events, create sbch2bch records (status = new)
-func (bot *MarketMakerBot) handleSbchOpenEvent(ethLog gethtypes.Log) {
+func (bot *MarketMakerBot) handleSbchOpenEventM(ethLog gethtypes.Log) {
 	if bot.isSlaveMode {
 		return
 	}
@@ -557,8 +560,8 @@ func (bot *MarketMakerBot) handleSbchOpenEvent(ethLog gethtypes.Log) {
 	}
 }
 
-// (slave mode) bch2sbch record: New => SbchLocked
-func (bot *MarketMakerBot) handleSbchOpenEventSlaveMode(ethLog gethtypes.Log) {
+// bch2sbch record: New => SbchLocked
+func (bot *MarketMakerBot) handleSbchOpenEventS(ethLog gethtypes.Log) {
 	if !bot.isSlaveMode {
 		return
 	}
@@ -633,7 +636,11 @@ func (bot *MarketMakerBot) handleSbchExpireEvent(ethLog gethtypes.Log) {
 }
 
 // bch2sbch records: New => SbchLocked|TooLateToLockSbch
-func (bot *MarketMakerBot) handleBchUserDeposits() {
+func (bot *MarketMakerBot) handleBchUserDepositsM() {
+	if bot.isSlaveMode {
+		return
+	}
+
 	log.Info("handle BCH user deposits ...")
 	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
 	if err != nil {
@@ -695,7 +702,11 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 }
 
 // sbch2bch records: New => BchLocked|TooLateToLockSbch
-func (bot *MarketMakerBot) handleSbchUserDeposits() {
+func (bot *MarketMakerBot) handleSbchUserDepositsM() {
+	if bot.isSlaveMode {
+		return
+	}
+
 	log.Info("handle sBCH user deposits ...")
 
 	lastBlockNum, err := bot.db.getLastBchHeight()
@@ -812,7 +823,15 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 	}
 	log.Info("secret-revealed BCH user deposits: ", len(records))
 
+	now := time.Now()
 	for _, record := range records {
+		if bot.isSlaveMode {
+			if now.Sub(record.UpdatedAt).Minutes() < 10 {
+				// give master some time to handle
+				continue
+			}
+		}
+
 		log.Info("record: ", toJSON(record))
 		covenant, err := htlcbch.NewMainnetCovenant(
 			gethcmn.FromHex(record.SenderPkh),
@@ -828,6 +847,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 		p2shAddr, _ := covenant.GetP2SHAddress()
 		log.Info("covenant: ", p2shAddr)
 
+		// TODO: not work in slave mode
 		tx, err := covenant.MakeReceiveTx(
 			gethcmn.FromHex(record.BchLockTxHash),
 			0,

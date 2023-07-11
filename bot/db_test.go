@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -142,6 +143,35 @@ func TestAddSbch2BchRecord(t *testing.T) {
 	records, err := db.GetAllSbch2BchRecords()
 	require.NoError(t, err)
 	require.Len(t, records, 2)
+}
+
+func TestUpdatedAt(t *testing.T) {
+	//defer os.Remove(testDbFile)
+	db := initDB(t, 123, 456)
+
+	record := &Sbch2BchRecord{
+		SbchLockTime:    11,
+		SbchLockTxHash:  "22",
+		Value:           44,
+		SbchSenderAddr:  "55",
+		BchRecipientPkh: "66",
+		HashLock:        "77",
+		TimeLock:        88,
+		HtlcScriptHash:  "99",
+	}
+
+	err := db.addSbch2BchRecord(record)
+	require.NoError(t, err)
+
+	record.Status = Sbch2BchStatusBchLocked
+	record.BchLockTxHash = "hh"
+	err = db.updateSbch2BchRecord(record)
+	require.NoError(t, err)
+
+	records, err := db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	require.True(t, time.Now().Sub(records[0].UpdatedAt).Seconds() < 2)
 }
 
 func initDB(t *testing.T, lastBchHeight, lastSbchHeight uint64) DB {

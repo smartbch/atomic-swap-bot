@@ -222,7 +222,7 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 		bchTimeLock:     72,
 		serviceFeeRatio: 100,
 	}
-	_bot.handleBchUserDeposits()
+	_bot.handleBchUserDepositsM()
 
 	unhandled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
 	require.NoError(t, err)
@@ -317,7 +317,7 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 		bchPkh:      _botPkh,
 		bchTimeLock: 72,
 	}
-	_bot.handleBchUserDeposits()
+	_bot.handleBchUserDepositsM()
 
 	unhandled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
 	require.NoError(t, err)
@@ -430,7 +430,6 @@ func TestBch2Sbch_botUnlockBch(t *testing.T) {
 		db:         _db,
 		bchCli:     &MockBchClient{},
 		bchPrivKey: testBchPrivKey,
-		bchPubKey:  testBchPubKey,
 		bchPkh:     testBchPkh,
 		bchAddr:    testBchAddr,
 	}
@@ -523,7 +522,7 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 	require.Equal(t, Bch2SbchStatusSbchRefunded, record0.Status)
 }
 
-func TestBch2Sbch_handleSbchOpenEventSlaveMode(t *testing.T) {
+func TestBch2Sbch_handleSbchOpenEvent_slaveMode(t *testing.T) {
 	_val := uint64(12345678)
 	_txHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
 	_botPkh := gethcmn.Address{'b', 'o', 't'}.Bytes()
@@ -604,6 +603,79 @@ func TestBch2Sbch_handleSbchOpenEventSlaveMode(t *testing.T) {
 	require.Equal(t, Bch2SbchStatusSbchLocked, record0.Status)
 	require.Equal(t, toHex(_sbchLockTxHash[:]), record0.SbchLockTxHash)
 	require.Greater(t, record0.SbchLockTxTime, uint64(0))
+}
+
+func TestBch2Sbch_handleBchReceiptTxs(t *testing.T) {
+	_val := uint64(12345678)
+	_secret := gethcmn.Hash{'s', 'e', 'c', 'r', 'e', 't'}.Bytes()
+	_bchLockTxHash := chainhash.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
+	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
+	_hashLock := sha256.Sum256(_secret)
+	_timeLock := uint32(100)
+	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.Bytes()
+	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
+
+	c, err := htlcbch.NewMainnetCovenant(
+		testBchPkh,
+		_userBchPkh,
+		_hashLock[:],
+		uint16(_timeLock),
+		0,
+	)
+	require.NoError(t, err)
+	_scriptHash, err := c.GetRedeemScriptHash()
+	require.NoError(t, err)
+	_sigScript, err := c.BuildReceiveSigScript([]byte{'s', 'i', 'g'}, testBchPubKey, _secret)
+	require.NoError(t, err)
+
+	_db := initDB(t, 123, 456)
+	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
+		BchLockHeight:  122,
+		BchLockTxHash:  _bchLockTxHash.String(),
+		Value:          _val,
+		RecipientPkh:   toHex(testBchPkh),
+		SenderPkh:      toHex(_userPkh),
+		HashLock:       toHex(_hashLock[:]),
+		TimeLock:       _timeLock,
+		SenderEvmAddr:  toHex(_evmAddr),
+		HtlcScriptHash: toHex(_scriptHash),
+		SbchLockTxHash: toHex(_sbchLockTxHash),
+		Secret:         toHex(_secret),
+		Status:         Bch2SbchStatusSecretRevealed,
+	}))
+
+	_bchCli := newMockBchClient(122, 129)
+	_bchCli.blocks[127] = &wire.MsgBlock{
+		Transactions: []*wire.MsgTx{
+			{
+				TxIn: []*wire.TxIn{
+					{
+						PreviousOutPoint: wire.OutPoint{
+							Hash: _bchLockTxHash,
+						},
+						SignatureScript: _sigScript,
+					},
+				},
+				TxOut: []*wire.TxOut{},
+			},
+		},
+	}
+
+	_bot := &MarketMakerBot{
+		db:     _db,
+		bchCli: _bchCli,
+		bchPkh: testBchPkh,
+	}
+
+	_bot.scanBchBlocks()
+
+	bchUnlocked, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusBchUnlocked, 100)
+	require.NoError(t, err)
+	require.Len(t, bchUnlocked, 1)
+	record0 := bchUnlocked[0]
+	require.Equal(t, "93e1119f2af3efda8bce6077be24e15c583ffc501621f2914335f507179199bc",
+		record0.BchUnlockTxHash)
 }
 
 func TestSbch2Bch_userLockSbch(t *testing.T) {
@@ -806,7 +878,7 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 		sbchTimeLock: _timeLock,
 	}
 
-	_bot.handleSbchUserDeposits()
+	_bot.handleSbchUserDepositsM()
 
 	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
 	require.NoError(t, err)
@@ -864,7 +936,7 @@ func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
 		sbchTimeLock: _timeLock,
 	}
 
-	_bot.handleSbchUserDeposits()
+	_bot.handleSbchUserDepositsM()
 
 	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
 	require.NoError(t, err)
