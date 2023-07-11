@@ -523,6 +523,89 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 	require.Equal(t, Bch2SbchStatusSbchRefunded, record0.Status)
 }
 
+func TestBch2Sbch_handleSbchOpenEventSlaveMode(t *testing.T) {
+	_val := uint64(12345678)
+	_txHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_botPkh := gethcmn.Address{'b', 'o', 't'}.Bytes()
+	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
+	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h'}.Bytes()
+	_timeLock := uint32(100)
+	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
+	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
+
+	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
+	_botEvmAddr := gethcmn.Address{'b', 'o', 't', 'e', 'v', 'm'}
+	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
+	_createdAt := big.NewInt(987600000).FillBytes(make([]byte, 32))
+	_penaltyBPS := big.NewInt(500).FillBytes(make([]byte, 32))
+
+	_db := initDB(t, 123, 456)
+	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
+		BchLockHeight:  123,
+		BchLockTxHash:  toHex(_txHash),
+		Value:          _val,
+		RecipientPkh:   toHex(_botPkh),
+		SenderPkh:      toHex(_userPkh),
+		HashLock:       toHex(_hashLock),
+		TimeLock:       _timeLock,
+		SenderEvmAddr:  toHex(_userEvmAddr[:]),
+		HtlcScriptHash: toHex(_scriptHash),
+		Status:         Bch2SbchStatusNew,
+	}))
+
+	_sbchCli := newMockSbchClient(457, 999, 0)
+	_sbchCli.logs[459] = []gethtypes.Log{
+		{
+			BlockNumber: 459,
+			TxHash:      _sbchLockTxHash,
+			Topics: []gethcmn.Hash{
+				htlcsbch.OpenEventId,
+				gethcmn.BytesToHash(leftPad0(_botEvmAddr.Bytes(), 12)),
+				gethcmn.BytesToHash(leftPad0(_userEvmAddr.Bytes(), 12)),
+			},
+			Data: joinBytes(
+				_hashLock,
+				big.NewInt(int64(_timeLock)).FillBytes(make([]byte, 32)),
+				satsToWei(_val).FillBytes(make([]byte, 32)),
+				rightPad0(_userBchPkh, 12),
+				_createdAt,
+				_penaltyBPS,
+			),
+		},
+	}
+
+	_bot := &MarketMakerBot{
+		db:          _db,
+		sbchCli:     _sbchCli,
+		sbchAddr:    _botEvmAddr,
+		isSlaveMode: true,
+	}
+	_bot.handleSbchEvents(457, 500)
+
+	unhandled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
+	require.NoError(t, err)
+	require.Len(t, unhandled, 0)
+
+	bchLocked, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusSbchLocked, 100)
+	require.NoError(t, err)
+	require.Len(t, bchLocked, 1)
+
+	record0 := bchLocked[0]
+	require.Equal(t, toHex(_txHash), record0.BchLockTxHash)
+	require.Equal(t, _val, record0.Value)
+	require.Equal(t, toHex(_botPkh), record0.RecipientPkh)
+	require.Equal(t, toHex(_userPkh), record0.SenderPkh)
+	require.Equal(t, toHex(_hashLock), record0.HashLock)
+	require.Equal(t, _timeLock, record0.TimeLock)
+	require.Equal(t, toHex(_userEvmAddr[:]), record0.SenderEvmAddr)
+	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
+	require.Equal(t, "", record0.Secret)
+	require.Equal(t, "", record0.BchUnlockTxHash)
+	require.Equal(t, Bch2SbchStatusSbchLocked, record0.Status)
+	require.Equal(t, toHex(_sbchLockTxHash[:]), record0.SbchLockTxHash)
+	require.Greater(t, record0.SbchLockTxTime, uint64(0))
+}
+
 func TestSbch2Bch_userLockSbch(t *testing.T) {
 	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
 	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
