@@ -341,7 +341,8 @@ func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
 		log.Info("HTLC receipt:", toJSON(receipt))
 		record, err := bot.db.getSbch2BchRecordByBchLockTxHash(receipt.PrevTxHash)
 		if err != nil {
-			log.Error(fmt.Errorf("DB error, can not get Sbch2BchRecord, SbchLockTxHash=%s, err=%w", receipt.TxHash, err))
+			log.Error(fmt.Errorf("DB error, can not get Sbch2BchRecord, SbchLockTxHash=%s, err=%w",
+				receipt.TxHash, err))
 			continue
 		}
 		//log.Info(record)

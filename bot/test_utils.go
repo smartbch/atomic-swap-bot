@@ -3,6 +3,10 @@ package bot
 import (
 	"bytes"
 	"encoding/binary"
+	"math/big"
+
+	gethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/gcash/bchd/chaincfg/chainhash"
 	"github.com/gcash/bchd/txscript"
 
 	"github.com/smartbch/atomic-swap-bot/htlcbch"
@@ -78,4 +82,40 @@ func leftPad0(bs []byte, n int) []byte {
 }
 func rightPad0(bs []byte, n int) []byte {
 	return append(bs, make([]byte, n)...)
+}
+
+func gethAddr(s string) gethcmn.Address {
+	addr := gethcmn.Address{}
+	copy(addr[:], s[:])
+	return addr
+}
+func gethAddrBytes(s string) []byte {
+	return gethAddr(s).Bytes()
+}
+
+func gethHash32(s string) gethcmn.Hash {
+	hash := gethcmn.Hash{}
+	copy(hash[:], s)
+	return hash
+}
+func gethHash32Bytes(s string) []byte {
+	return gethHash32(s).Bytes()
+}
+
+func bchHash32(s string) chainhash.Hash {
+	hash := chainhash.Hash{}
+	copy(hash[:], s)
+	return hash
+}
+
+func gethAddrToHash32(addr gethcmn.Address) gethcmn.Hash {
+	return gethcmn.BytesToHash(leftPad0(addr.Bytes(), 12))
+}
+
+func int64ToBytes32(n int64) []byte {
+	return big.NewInt(n).FillBytes(make([]byte, 32))
+}
+
+func satsToWeiBytes32(amt uint64) []byte {
+	return satsToWei(amt).FillBytes(make([]byte, 32))
 }

@@ -2,7 +2,6 @@ package bot
 
 import (
 	"crypto/sha256"
-	"math/big"
 	"strconv"
 	"testing"
 	"time"
@@ -13,7 +12,6 @@ import (
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/gcash/bchd/bchec"
 	"github.com/gcash/bchd/chaincfg"
-	"github.com/gcash/bchd/chaincfg/chainhash"
 	"github.com/gcash/bchd/wire"
 	"github.com/gcash/bchutil"
 
@@ -37,11 +35,11 @@ func TestUtxoAmtToSats(t *testing.T) {
 }
 
 func TestBch2Sbch_userLockBch(t *testing.T) {
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h'}.Bytes()
+	_userPkh := gethAddrBytes("user")
+	_hashLock := gethHash32Bytes("hash")
 	_timeLock := uint16(100)
 	_penaltyBPS := uint16(500)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
 
 	covenant, err := htlcbch.NewMainnetCovenant(_userPkh, testBchPkh, _hashLock, _timeLock, _penaltyBPS)
 	require.NoError(t, err)
@@ -103,13 +101,13 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 }
 
 func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h'}.Bytes()
+	_userPkh := gethAddrBytes("user")
+	_hashLock := gethHash32Bytes("hash")
 	_timeLock := uint16(100)
 	_penaltyBPS := uint16(500)
 	_minSwapVal := uint64(100000)
 	_maxSwapVal := uint64(999999)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
 
 	_db := initDB(t, 123, 456)
 	_bchCli := newMockBchClient(124, 128)
@@ -189,13 +187,13 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 
 func TestBch2Sbch_botLockSbch(t *testing.T) {
 	_val := uint64(12345678)
-	_txHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
-	_botPkh := gethcmn.Address{'b', 'o', 't'}.Bytes()
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h'}.Bytes()
+	_txHash := gethHash32Bytes("bchlock")
+	_botPkh := gethAddrBytes("bot")
+	_userPkh := gethAddrBytes("user")
+	_hashLock := gethHash32Bytes("hash")
 	_timeLock := uint32(100)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.String()
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
+	_scriptHash := gethAddrBytes("htlc")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
@@ -206,7 +204,7 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock),
 		TimeLock:       _timeLock,
-		SenderEvmAddr:  _evmAddr,
+		SenderEvmAddr:  toHex(_evmAddr),
 		HtlcScriptHash: toHex(_scriptHash),
 		Status:         Bch2SbchStatusNew,
 	}))
@@ -239,7 +237,7 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 	require.Equal(t, toHex(_userPkh), record0.SenderPkh)
 	require.Equal(t, toHex(_hashLock), record0.HashLock)
 	require.Equal(t, _timeLock, record0.TimeLock)
-	require.Equal(t, _evmAddr, record0.SenderEvmAddr)
+	require.Equal(t, toHex(_evmAddr), record0.SenderEvmAddr)
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.BchUnlockTxHash)
@@ -248,13 +246,13 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 
 func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 	_val := uint64(12345678)
-	_txHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
-	_botPkh := gethcmn.Address{'b', 'o', 't'}.Bytes()
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h'}.Bytes()
+	_txHash := gethHash32Bytes("bchlock")
+	_botPkh := gethAddrBytes("bot")
+	_userPkh := gethAddrBytes("user")
+	_hashLock := gethHash32Bytes("hash")
 	_timeLock := uint32(72)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.String()
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
+	_scriptHash := gethAddrBytes("htlc")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
@@ -265,7 +263,7 @@ func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock),
 		TimeLock:       _timeLock,
-		SenderEvmAddr:  _evmAddr,
+		SenderEvmAddr:  toHex(_evmAddr),
 		HtlcScriptHash: toHex(_scriptHash),
 	}))
 
@@ -287,13 +285,13 @@ func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 
 func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 	_val := uint64(12345678)
-	_txHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
-	_botPkh := gethcmn.Address{'b', 'o', 't'}.Bytes()
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h'}.Bytes()
+	_txHash := gethHash32Bytes("bchlock")
+	_botPkh := gethAddrBytes("bot")
+	_userPkh := gethAddrBytes("user")
+	_hashLock := gethHash32Bytes("hash")
 	_timeLock := uint32(72)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.String()
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
+	_scriptHash := gethAddrBytes("htlc")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
@@ -304,7 +302,7 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock),
 		TimeLock:       _timeLock,
-		SenderEvmAddr:  _evmAddr,
+		SenderEvmAddr:  toHex(_evmAddr),
 		HtlcScriptHash: toHex(_scriptHash),
 	}))
 
@@ -330,14 +328,14 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 
 func TestBch2Sbch_userUnlockSbch(t *testing.T) {
 	_val := uint64(12345678)
-	_secret := gethcmn.Hash{'s', 'e', 'c', 'r', 'e', 't'}
-	_bchLockTxHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
+	_secret := gethHash32("secret")
+	_bchLockTxHash := gethHash32("bchlock")
+	_userPkh := gethAddrBytes("user")
 	_hashLock := sha256.Sum256(_secret[:])
 	_timeLock := uint32(100)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.Bytes()
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
+	_scriptHash := gethAddrBytes("htlc")
+	_sbchLockTxHash := gethHash32Bytes("sbchlock")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
@@ -401,14 +399,14 @@ func TestBch2Sbch_userUnlockSbch(t *testing.T) {
 
 func TestBch2Sbch_botUnlockBch(t *testing.T) {
 	_val := uint64(12345678)
-	_secret := gethcmn.Hash{'s', 'e', 'c', 'r', 'e', 't'}.Bytes()
-	_bchLockTxHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
+	_secret := gethHash32Bytes("secret")
+	_bchLockTxHash := gethHash32Bytes("bchlock")
+	_userPkh := gethAddrBytes("user")
 	_hashLock := sha256.Sum256(_secret)
 	_timeLock := uint32(100)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.Bytes()
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
+	_scriptHash := gethAddrBytes("htlc")
+	_sbchLockTxHash := gethHash32Bytes("sbchlock")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
@@ -461,20 +459,21 @@ func TestBch2Sbch_botUnlockBch(t *testing.T) {
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
 	require.Equal(t, toHex(_sbchLockTxHash), record0.SbchLockTxHash)
 	require.Equal(t, toHex(_secret), record0.Secret)
-	require.Equal(t, "5447476b1799d9744a78a641ab1e313615f96fe06fcee59ce3b56f36d30630f4", record0.BchUnlockTxHash)
+	require.Equal(t, "5447476b1799d9744a78a641ab1e313615f96fe06fcee59ce3b56f36d30630f4",
+		record0.BchUnlockTxHash)
 	require.Equal(t, Bch2SbchStatusBchUnlocked, record0.Status)
 }
 
 func TestBch2Sbch_botRefundSbch(t *testing.T) {
 	_val := uint64(12345678)
-	_secret := gethcmn.Hash{'s', 'e', 'c', 'r', 'e', 't'}
-	_bchLockTxHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
+	_secret := gethHash32("secret")
+	_bchLockTxHash := gethHash32("bchlock")
+	_userPkh := gethAddrBytes("user")
 	_hashLock := sha256.Sum256(_secret[:])
 	_timeLock := uint32(72)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.Bytes()
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
+	_scriptHash := gethAddrBytes("htlc")
+	_sbchLockTxHash := gethHash32Bytes("sbchlock")
 	_sbchNow := uint64(time.Now().Unix())
 	_sbchLockTxTime := _sbchNow - 22000
 
@@ -518,25 +517,26 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
 	require.Equal(t, toHex(_sbchLockTxHash), record0.SbchLockTxHash)
 	require.Equal(t, "", record0.BchUnlockTxHash)
-	require.Equal(t, "a2834f77f929353179fe8b7fc1e792f02fe56ebfcaa2b5eb55484818b6397a49", record0.SbchRefundTxHash)
+	require.Equal(t, "a2834f77f929353179fe8b7fc1e792f02fe56ebfcaa2b5eb55484818b6397a49",
+		record0.SbchRefundTxHash)
 	require.Equal(t, Bch2SbchStatusSbchRefunded, record0.Status)
 }
 
 func TestBch2Sbch_handleSbchOpenEvent_slaveMode(t *testing.T) {
 	_val := uint64(12345678)
-	_txHash := gethcmn.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
-	_botPkh := gethcmn.Address{'b', 'o', 't'}.Bytes()
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h'}.Bytes()
+	_txHash := gethHash32Bytes("bchlock")
+	_botPkh := gethAddrBytes("bot")
+	_userPkh := gethAddrBytes("user")
+	_hashLock := gethHash32Bytes("hash")
 	_timeLock := uint32(100)
-	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
+	_userEvmAddr := gethAddr("uevm")
+	_scriptHash := gethAddrBytes("htlc")
 
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
-	_botEvmAddr := gethcmn.Address{'b', 'o', 't', 'e', 'v', 'm'}
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
-	_createdAt := big.NewInt(987600000).FillBytes(make([]byte, 32))
-	_penaltyBPS := big.NewInt(500).FillBytes(make([]byte, 32))
+	_sbchLockTxHash := gethHash32("sbchlocktx")
+	_botEvmAddr := gethAddr("botevm")
+	_userBchPkh := gethAddrBytes("ubch")
+	_createdAt := int64ToBytes32(987600000)
+	_penaltyBPS := int64ToBytes32(500)
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
@@ -559,13 +559,13 @@ func TestBch2Sbch_handleSbchOpenEvent_slaveMode(t *testing.T) {
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
 				htlcsbch.OpenEventId,
-				gethcmn.BytesToHash(leftPad0(_botEvmAddr.Bytes(), 12)),
-				gethcmn.BytesToHash(leftPad0(_userEvmAddr.Bytes(), 12)),
+				gethAddrToHash32(_botEvmAddr),
+				gethAddrToHash32(_userEvmAddr),
 			},
 			Data: joinBytes(
 				_hashLock,
-				big.NewInt(int64(_timeLock)).FillBytes(make([]byte, 32)),
-				satsToWei(_val).FillBytes(make([]byte, 32)),
+				int64ToBytes32(int64(_timeLock)),
+				satsToWeiBytes32(_val),
 				rightPad0(_userBchPkh, 12),
 				_createdAt,
 				_penaltyBPS,
@@ -607,14 +607,14 @@ func TestBch2Sbch_handleSbchOpenEvent_slaveMode(t *testing.T) {
 
 func TestBch2Sbch_handleBchReceiptTxs(t *testing.T) {
 	_val := uint64(12345678)
-	_secret := gethcmn.Hash{'s', 'e', 'c', 'r', 'e', 't'}.Bytes()
-	_bchLockTxHash := chainhash.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
-	_userPkh := gethcmn.Address{'u', 's', 'e', 'r'}.Bytes()
+	_secret := gethHash32Bytes("secret")
+	_bchLockTxHash := bchHash32("bchlocktx")
+	_userPkh := gethAddrBytes("user")
 	_hashLock := sha256.Sum256(_secret)
 	_timeLock := uint32(100)
-	_evmAddr := gethcmn.Address{'e', 'v', 'm'}.Bytes()
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k'}.Bytes()
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
+	_evmAddr := gethAddrBytes("evm")
+	_sbchLockTxHash := gethHash32Bytes("sbchlock")
+	_userBchPkh := gethAddrBytes("ubch")
 
 	c, err := htlcbch.NewMainnetCovenant(
 		testBchPkh,
@@ -679,14 +679,14 @@ func TestBch2Sbch_handleBchReceiptTxs(t *testing.T) {
 }
 
 func TestSbch2Bch_userLockSbch(t *testing.T) {
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
-	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k'}
-	_val := satsToWei(12345678).FillBytes(make([]byte, 32))
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
-	_createdAt := big.NewInt(987600000).FillBytes(make([]byte, 32))
-	_timeLock := big.NewInt(987600000 + 12*3600).FillBytes(make([]byte, 32))
-	_penaltyBPS := big.NewInt(500).FillBytes(make([]byte, 32))
+	_sbchLockTxHash := gethHash32("sbchlocktx")
+	_userEvmAddr := gethAddr("uevm")
+	_hashLock := gethHash32("hashlock")
+	_val := satsToWeiBytes32(12345678)
+	_userBchPkh := gethAddrBytes("ubch")
+	_createdAt := int64ToBytes32(987600000)
+	_timeLock := int64ToBytes32(987600000 + 12*3600)
+	_penaltyBPS := int64ToBytes32(500)
 
 	_db := initDB(t, 123, 456)
 	_sbchCli := newMockSbchClient(457, 999, 0)
@@ -696,8 +696,8 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
 				htlcsbch.OpenEventId,
-				gethcmn.BytesToHash(leftPad0(_userEvmAddr.Bytes(), 12)),
-				gethcmn.BytesToHash(leftPad0(testEvmAddr.Bytes(), 12)),
+				gethAddrToHash32(_userEvmAddr),
+				gethAddrToHash32(testEvmAddr),
 			},
 			Data: joinBytes(_hashLock.Bytes(), _timeLock, _val, rightPad0(_userBchPkh, 12),
 				_createdAt, _penaltyBPS),
@@ -729,7 +729,8 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 	require.Equal(t, toHex(_userBchPkh), record0.BchRecipientPkh)
 	require.Equal(t, toHex(_hashLock[:]), record0.HashLock)
 	require.Equal(t, uint32(12*3600), record0.TimeLock)
-	require.Equal(t, "7e7dcbfcc8c9ce21ee2d5f0a9e73e64469cba144", record0.HtlcScriptHash)
+	require.Equal(t, "7e7dcbfcc8c9ce21ee2d5f0a9e73e64469cba144",
+		record0.HtlcScriptHash)
 	require.Equal(t, "", record0.BchLockTxHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
@@ -737,10 +738,10 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 }
 
 func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
-	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k'}
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
+	_sbchLockTxHash := gethHash32("sbchlocktx")
+	_userEvmAddr := gethAddr("uevm")
+	_hashLock := gethHash32("hashlock")
+	_userBchPkh := gethAddrBytes("ubch")
 	_createdAt := time.Now().Unix()
 	_penaltyBPS := uint16(500)
 	_sbchTimeLock := uint32(12 * 3600)
@@ -755,16 +756,16 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
 				htlcsbch.OpenEventId,
-				gethcmn.BytesToHash(leftPad0(_userEvmAddr.Bytes(), 12)),
-				gethcmn.BytesToHash(leftPad0(testEvmAddr.Bytes(), 12)),
+				gethAddrToHash32(_userEvmAddr),
+				gethAddrToHash32(testEvmAddr),
 			},
 			Data: joinBytes(
 				_hashLock.Bytes(),
-				big.NewInt(_createdAt+int64(_sbchTimeLock)).FillBytes(make([]byte, 32)),
-				satsToWei(_minSwapVal+1).FillBytes(make([]byte, 32)),
+				int64ToBytes32(_createdAt+int64(_sbchTimeLock)),
+				satsToWeiBytes32(_minSwapVal+1),
 				rightPad0(_userBchPkh, 12),
-				big.NewInt(_createdAt).FillBytes(make([]byte, 32)),
-				big.NewInt(int64(_penaltyBPS/2)).FillBytes(make([]byte, 32)), // invalid penaltyBPS
+				int64ToBytes32(_createdAt),
+				int64ToBytes32(int64(_penaltyBPS/2)), // invalid penaltyBPS
 			),
 		},
 		{
@@ -772,16 +773,16 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
 				htlcsbch.OpenEventId,
-				gethcmn.BytesToHash(leftPad0(_userEvmAddr.Bytes(), 12)),
-				gethcmn.BytesToHash(leftPad0(testEvmAddr.Bytes(), 12)),
+				gethAddrToHash32(_userEvmAddr),
+				gethAddrToHash32(testEvmAddr),
 			},
 			Data: joinBytes(
 				_hashLock.Bytes(),
-				big.NewInt(_createdAt+int64(_sbchTimeLock/2)).FillBytes(make([]byte, 32)), // invalid sbchTimeLock
-				satsToWei(_minSwapVal+1).FillBytes(make([]byte, 32)),
+				int64ToBytes32(_createdAt+int64(_sbchTimeLock/2)), // invalid sbchTimeLock
+				satsToWeiBytes32(_minSwapVal+1),
 				rightPad0(_userBchPkh, 12),
-				big.NewInt(_createdAt).FillBytes(make([]byte, 32)),
-				big.NewInt(int64(_penaltyBPS)).FillBytes(make([]byte, 32)),
+				int64ToBytes32(_createdAt),
+				int64ToBytes32(int64(_penaltyBPS)),
 			),
 		},
 		{
@@ -789,16 +790,16 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
 				htlcsbch.OpenEventId,
-				gethcmn.BytesToHash(leftPad0(_userEvmAddr.Bytes(), 12)),
-				gethcmn.BytesToHash(leftPad0(testEvmAddr.Bytes(), 12)),
+				gethAddrToHash32(_userEvmAddr),
+				gethAddrToHash32(testEvmAddr),
 			},
 			Data: joinBytes(
 				_hashLock.Bytes(),
-				big.NewInt(_createdAt+int64(_sbchTimeLock)).FillBytes(make([]byte, 32)),
-				satsToWei(_minSwapVal-1).FillBytes(make([]byte, 32)), // minSwapVal too small
+				int64ToBytes32(_createdAt+int64(_sbchTimeLock)),
+				satsToWeiBytes32(_minSwapVal-1), // minSwapVal too small
 				rightPad0(_userBchPkh, 12),
-				big.NewInt(_createdAt).FillBytes(make([]byte, 32)),
-				big.NewInt(int64(_penaltyBPS)).FillBytes(make([]byte, 32)),
+				int64ToBytes32(_createdAt),
+				int64ToBytes32(int64(_penaltyBPS)),
 			),
 		},
 		{
@@ -806,16 +807,16 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
 				htlcsbch.OpenEventId,
-				gethcmn.BytesToHash(leftPad0(_userEvmAddr.Bytes(), 12)),
-				gethcmn.BytesToHash(leftPad0(testEvmAddr.Bytes(), 12)),
+				gethAddrToHash32(_userEvmAddr),
+				gethAddrToHash32(testEvmAddr),
 			},
 			Data: joinBytes(
 				_hashLock.Bytes(),
-				big.NewInt(_createdAt+int64(_sbchTimeLock)).FillBytes(make([]byte, 32)),
-				satsToWei(_maxSwapVal+1).FillBytes(make([]byte, 32)), // maxSwapVal too large
+				int64ToBytes32(_createdAt+int64(_sbchTimeLock)),
+				satsToWeiBytes32(_maxSwapVal+1), // maxSwapVal too large
 				rightPad0(_userBchPkh, 12),
-				big.NewInt(_createdAt).FillBytes(make([]byte, 32)),
-				big.NewInt(int64(_penaltyBPS)).FillBytes(make([]byte, 32)),
+				int64ToBytes32(_createdAt),
+				int64ToBytes32(int64(_penaltyBPS)),
 			),
 		},
 	}
@@ -841,14 +842,14 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 }
 
 func TestSbch2Bch_botLockBch(t *testing.T) {
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}.Bytes()
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
 	_val := uint64(12345678)
-	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_userEvmAddr := gethAddr("uevm")
+	_hashLock := gethHash32Bytes("hashlock")
 	_lockTime := uint64(1683248875) // time.Now().Unix()
 	_timeLock := uint32(36000)
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
+	_userBchPkh := gethAddrBytes("ubch")
+	_scriptHash := gethAddrBytes("htlc")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
@@ -892,21 +893,22 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 	require.Equal(t, toHex(_hashLock), record0.HashLock)
 	require.Equal(t, uint32(36000), record0.TimeLock)
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
-	require.Equal(t, "a19d7ad2f4013aebb8d4360478d242992fad16ce0aaf230a240a2fc7836a1257", record0.BchLockTxHash)
+	require.Equal(t, "a19d7ad2f4013aebb8d4360478d242992fad16ce0aaf230a240a2fc7836a1257",
+		record0.BchLockTxHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
 	require.Equal(t, Sbch2BchStatusBchLocked, record0.Status)
 }
 
 func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}.Bytes()
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
 	_val := uint64(12345678)
-	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_userEvmAddr := gethAddr("uevm")
+	_hashLock := gethHash32Bytes("hashlock")
 	_lockTime := uint64(time.Now().Unix())
 	_timeLock := uint32(36000)
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
+	_userBchPkh := gethAddrBytes("ubch")
+	_scriptHash := gethAddrBytes("htlc")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
@@ -948,14 +950,14 @@ func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
 }
 
 func TestSbch2Bch_userUnlockBch(t *testing.T) {
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}.Bytes()
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
 	_val := uint64(12345678)
-	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
-	_secret := gethcmn.Hash{'s', 'e', 'c', 'r', 'e', 't'}.Bytes()
+	_userEvmAddr := gethAddr("uevm")
+	_secret := gethHash32Bytes("secret")
 	_hashLock := gethcmn.FromHex(secretToHashLock(_secret))
 	_timeLock := uint16(888)
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
-	_bchLockTxHash := chainhash.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
+	_userBchPkh := gethAddrBytes("ubch")
+	_bchLockTxHash := bchHash32("bchlocktx")
 
 	c, err := htlcbch.NewMainnetCovenant(
 		testBchPkh,
@@ -1024,23 +1026,24 @@ func TestSbch2Bch_userUnlockBch(t *testing.T) {
 	require.Equal(t, uint32(888), record0.TimeLock)
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
 	require.Equal(t, _bchLockTxHash.String(), record0.BchLockTxHash)
-	require.Equal(t, "a9c6d5a3d9a35b22738c24d47ea374f116cfdbff9209979435c5f459787b0d91", record0.BchUnlockTxHash)
+	require.Equal(t, "a9c6d5a3d9a35b22738c24d47ea374f116cfdbff9209979435c5f459787b0d91",
+		record0.BchUnlockTxHash)
 	require.Equal(t, toHex(_secret), record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
 	require.Equal(t, Sbch2BchStatusSecretRevealed, record0.Status)
 }
 
 func TestSbch2Bch_botUnlockSbch(t *testing.T) {
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}.Bytes()
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
 	_val := uint64(12345678)
-	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
-	_secret := gethcmn.Hash{'s', 'e', 'c', 'r', 'e', 't'}.Bytes()
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_userEvmAddr := gethAddr("uevm")
+	_secret := gethHash32Bytes("secret")
+	_hashLock := gethHash32Bytes("hashlock")
 	_timeLock := uint32(888)
-	_scriptHash := gethcmn.Address{'h', 't', 'l', 'c'}.Bytes()
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
-	_bchLockTxHash := chainhash.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
-	_bchUnlockTxHash := chainhash.Hash{'b', 'c', 'h', 'u', 'n', 'l', 'o', 'c', 'k', 't', 'x'}
+	_scriptHash := gethAddrBytes("htlc")
+	_userBchPkh := gethAddrBytes("ubch")
+	_bchLockTxHash := bchHash32("bchlocktx")
+	_bchUnlockTxHash := bchHash32("bchunlocktx")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
@@ -1082,18 +1085,19 @@ func TestSbch2Bch_botUnlockSbch(t *testing.T) {
 	require.Equal(t, _bchLockTxHash.String(), record0.BchLockTxHash)
 	require.Equal(t, _bchUnlockTxHash.String(), record0.BchUnlockTxHash)
 	require.Equal(t, toHex(_secret), record0.Secret)
-	require.Equal(t, "0000000000000000000000000000000000000000000000006b636f6c68736168", record0.SbchUnlockTxHash)
+	require.Equal(t, "0000000000000000000000000000000000000000000000006b636f6c68736168",
+		record0.SbchUnlockTxHash)
 	require.Equal(t, Sbch2BchStatusSbchUnlocked, record0.Status)
 }
 
 func TestSbch2Bch_botRefundBch(t *testing.T) {
-	_sbchLockTxHash := gethcmn.Hash{'s', 'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}.Bytes()
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
 	_val := uint64(12345678)
-	_userEvmAddr := gethcmn.Address{'u', 'e', 'v', 'm'}
-	_hashLock := gethcmn.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k'}.Bytes()
+	_userEvmAddr := gethAddr("uevm")
+	_hashLock := gethHash32Bytes("hashlock")
 	_timeLock := uint32(72000)
-	_userBchPkh := gethcmn.Address{'u', 'b', 'c', 'h'}.Bytes()
-	_bchLockTxHash := chainhash.Hash{'b', 'c', 'h', 'l', 'o', 'c', 'k', 't', 'x'}
+	_userBchPkh := gethAddrBytes("ubch")
+	_bchLockTxHash := bchHash32("bchlocktx")
 
 	c, err := htlcbch.NewMainnetCovenant(
 		testBchPkh,
@@ -1151,6 +1155,7 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 	require.Equal(t, "", record0.BchUnlockTxHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
-	require.Equal(t, "5b65aa3b16069ebd2ff6ab0cec804ad052f85824e600d9fb44614d39acb03ff2", record0.BchRefundTxHash)
+	require.Equal(t, "5b65aa3b16069ebd2ff6ab0cec804ad052f85824e600d9fb44614d39acb03ff2",
+		record0.BchRefundTxHash)
 	require.Equal(t, Sbch2BchStatusBchRefunded, record0.Status)
 }
