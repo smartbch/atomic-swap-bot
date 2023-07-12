@@ -27,50 +27,161 @@ import (
 )
 
 /*
+action & state:
+ +--------+  +========+
+ | action |  | state  |
+ +--------+  +========+
 
-+-------------------------+----------------+----------------+
-| BCH2SBCH: normal        | old status     | new status     |
-+-------------------------+----------------+----------------+
-| handleBchDepositTxs     |                | New            |
-| handleBchUserDeposits   | New            | SbchLocked     |
-| handleSbchCloseEventB2S | SbchLocked     | SecretRevealed |
-| unlockBchUserDeposits   | SecretRevealed | BchUnlocked    |
-+-------------------------+----------------+----------------+
-+-------------------------+----------------+----------------+
-| BCH2SBCH: refund        | old status     | new status     |
-+-------------------------+----------------+----------------+
-| handleBchDepositTxs     |                | New            |
-| handleBchUserDeposits   | New            | SbchLocked     |
-| refundLockedSbch        | SbchLocked     | SbchRefunded   |
-+-------------------------+----------------+----------------+
-+-------------------------+----------------+----------------+
-| BCH2SBCH: too late      | old status     | new status     |
-+-------------------------+----------------+----------------+
-| handleBchDepositTxs     |                | New            |
-| handleBchUserDeposits   | New            | TooLate        |
-+-------------------------+----------------+----------------+
+BCH=>SBCH, normal flow:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ +----------+    +----------+    +-------------+    +-----------+    +------------+    +-----------+
+ |   user   |    |   bot    |    | bot(master) |    |   user    |    |    bot     |    |    bot    |
+ +----------+ => +----------+ => +-------------+ => +-----------+ => +------------+ => +-----------+
+ | sned BCH |    | find BCH |    | send sBCH   |    | send sBCH |    | find sBCH  |    | send BCH  |
+ | lock tx  |    | lock tx  |    |  lock tx    |    | unlock tx |    | unlock log |    | unlock tx |
+ +----------+    +----------+    +-------------+    +-----------+    +------------+    +-----------+
+                      /               /                     _______________/       __________/
+                     /               /                     /                      /
+                +=====+      +============+      +================+      +==============+
+                | New | ---> | SbchLocked | ---> | SecretRevealed | ---> |  BchUnlocked |
+                +=====+      +============+      +================+      +==============+
+                                     \                                           \___________
+                                      \                                                      \
+                                 +-------------+                                       +-----------+
+                                 | bot(slave)  |                                       |    bot    |
+                                 +-------------+                                       +-----------+
+                                 |  find sBCH  |                                       | find BCH  |
+                                 |  lock log   |                                       | unlock tx |
+                                 +-------------+                                       +-----------+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+-------------------------+----------------+----------------+
-| SBCH2BCH: normal        | old status     | new status     |
-+-------------------------+----------------+----------------+
-| handleSbchOpenEventS2B  |                | New            |
-| handleSbchUserDeposits  | New            | BchLocked      |
-| handleBchReceiptTxs     | BchLocked      | SecretRevealed |
-| unlockSbchUserDeposits  | SecretRevealed | SbchUnlocked   |
-+-------------------------+----------------+----------------+
-+-------------------------+----------------+----------------+
-| SBCH2BCH: refund        | old status     | new status     |
-+-------------------------+----------------+----------------+
-| handleSbchOpenEventS2B  |                | New            |
-| handleSbchUserDeposits  | New            | BchLocked      |
-| refundLockedBCH         | BchLocked      | BchRefunded    |
-+-------------------------+----------------+----------------+
-+-------------------------+----------------+----------------+
-| SBCH2BCH: too late      | old status     | new status     |
-+-------------------------+----------------+----------------+
-| handleSbchOpenEventS2B  |                | New            |
-| handleSbchUserDeposits  | New            | TooLate        |
-+-------------------------+----------------+----------------+
+BCH=>SBCH, refund:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ +----------+    +----------+    +-------------+      +-----------+
+ |   user   |    |   bot    |    | bot(master) |      |    bot    |
+ +----------+ => +----------+ => +-------------+ ===> +-----------+
+ | sned BCH |    | find BCH |    | send sBCH   |      | send sBCH |
+ | lock tx  |    | lock tx  |    |  lock tx    |      | refund tx |
+ +----------+    +----------+    +-------------+      +-----------+
+                      /               /                     /
+                     /               /                     / 
+                +=====+      +============+      +==============+
+                | New | ---> | SbchLocked | ---> | SbchRefunded |
+                +=====+      +============+      +==============+
+                                     \                     \
+                                      \                     \
+                                 +-------------+      +-----------+
+                                 | bot(slave)  |      |    bot    |
+                                 +-------------+      +-----------+
+                                 |  find sBCH  |      | find sBCH |
+                                 |  lock log   |      | refund tx |
+                                 +-------------+      +-----------+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SBCH=>BCH, normal flow:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ +----------+    +----------+    +-------------+    +-----------+    +------------+    +-----------+
+ |   user   |    |   bot    |    | bot(master) |    |   user    |    |    bot     |    |    bot    |
+ +----------+ => +----------+ => +-------------+ => +-----------+ => +------------+ => +-----------+
+ | sned sBCH|    | find sBCH|    | send BCH    |    | send BCH  |    | find BCH   |    | send sBCH |
+ | lock tx  |    | lock log |    |  lock tx    |    | unlock tx |    | unlock tx  |    | unlock tx |
+ +----------+    +----------+    +-------------+    +-----------+    +------------+    +-----------+
+                      /               /                     _______________/       __________/
+                     /               /                     /                      /
+                +=====+      +============+      +================+      +==============+
+                | New | ---> |  BchLocked | ---> | SecretRevealed | ---> | SbchUnlocked |
+                +=====+      +============+      +================+      +==============+
+                                     \                                           \___________
+                                      \                                                      \
+                                 +-------------+                                       +-----------+
+                                 | bot(slave)  |                                       |    bot    |
+                                 +-------------+                                       +-----------+
+                                 |  find BCH   |                                       | find sBCH |
+                                 |  lock tx    |                                       | unlock log|
+                                 +-------------+                                       +-----------+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SBCH=>BCH, refund:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ +----------+    +----------+    +-------------+      +-----------+
+ |   user   |    |   bot    |    | bot(master) |      |    bot    |
+ +----------+ => +----------+ => +-------------+ ===> +-----------+
+ | sned sBCH|    | find sBCH|    | send BCH    |      | send BCH  |
+ | lock tx  |    | lock log |    |  lock tx    |      | refund tx |
+ +----------+    +----------+    +-------------+      +-----------+
+                      /               /                     /
+                     /               /                     / 
+                +=====+      +============+      +==============+
+                | New | ---> |  BchLocked | ---> |  BchRefunded |
+                +=====+      +============+      +==============+
+                                     \                     \
+                                      \                     \
+                                 +-------------+      +-----------+
+                                 | bot(slave)  |      |    bot    |
+                                 +-------------+      +-----------+
+                                 |  find BCH   |      | find BCH  |
+                                 |  lock tx    |      | refund tx |
+                                 +-------------+      +-----------+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+
+
+
+/*
+M: master, S: slave
+
++-------------------------+-+-+----------------+----------------+
+| BCH2SBCH: normal        |M|S| old status     | new status     |
++-------------------------+-+-+----------------+----------------+
+| handleBchDepositTxs     |✓|✓|                | New            |
+| handleBchUserDeposits   |✓| | New            | SbchLocked     |
+| handleSbchOpenEventB2S  | |✓| New            | SbchLocked     |
+| handleSbchCloseEventB2S |✓|✓| SbchLocked     | SecretRevealed |
+| unlockBchUserDeposits   |✓|✓| SecretRevealed | BchUnlocked    |
+| handleBchReceiptTxB2S   |✓|✓| SecretRevealed | BchUnlocked    |
++-------------------------+-+-+----------------+----------------+
++-------------------------+-+-+----------------+----------------+
+| BCH2SBCH: refund        |M|S| old status     | new status     |
++-------------------------+-+-+----------------+----------------+
+| handleBchDepositTxs     |✓|✓|                | New            |
+| handleBchUserDeposits   |✓| | New            | SbchLocked     |
+| handleSbchOpenEventB2S  | |✓| New            | SbchLocked     |
+| refundLockedSbch        |✓|✓| SbchLocked     | SbchRefunded   |
+| handleSbchExpireEvent   |✓|✓| SbchLocked     | SbchRefunded   |
++-------------------------+-+-+----------------+----------------+
++-------------------------+-+-+----------------+----------------+
+| BCH2SBCH: too late      |M|S| old status     | new status     |
++-------------------------+-+-+----------------+----------------+
+| handleBchDepositTxs     |✓|✓|                | New            |
+| handleBchUserDeposits   |✓| | New            | TooLate        |
++-------------------------+-+-+----------------+----------------+
+
++-------------------------+-+-+----------------+----------------+
+| SBCH2BCH: normal        |M|S| old status     | new status     |
++-------------------------+-+-+----------------+----------------+
+| handleSbchOpenEventS2B  |✓|✓|                | New            |
+| handleSbchUserDeposits  |✓| | New            | BchLocked      |
+| handleBchDepositTxS2B   | |✓| New            | BchLocked      |
+| handleBchReceiptTxS2B   |✓|✓| BchLocked      | SecretRevealed |
+| unlockSbchUserDeposits  |✓|✓| SecretRevealed | SbchUnlocked   |
+| handleSbchExpireEvent   |✓|✓| SecretRevealed | SbchUnlocked   |
++-------------------------+-+-+----------------+----------------+
++-------------------------+-+-+----------------+----------------+
+| SBCH2BCH: refund        |M|S| old status     | new status     |
++-------------------------+-+-+----------------+----------------+
+| handleSbchOpenEventS2B  |✓|✓|                | New            |
+| handleSbchUserDeposits  |✓| | New            | BchLocked      |
+| handleBchDepositTxS2B   | |✓| New            | BchLocked      |
+| refundLockedBCH         |✓|✓| BchLocked      | BchRefunded    |
+| handleBchRefundTxs      |✓|✓| BchLocked      | BchRefunded    |
++-------------------------+-+-+----------------+----------------+
++-------------------------+-+-+----------------+----------------+
+| SBCH2BCH: too late      |M|S| old status     | new status     |
++-------------------------+-+-+----------------+----------------+
+| handleSbchOpenEventS2B  |✓|✓|                | New            |
+| handleSbchUserDeposits  |✓| | New            | TooLate        |
++-------------------------+-+-+----------------+----------------+
 
 */
 
