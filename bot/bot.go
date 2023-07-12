@@ -447,24 +447,24 @@ func (bot *MarketMakerBot) handleBchReceiptTxB2S(receipt *htlcbch.HtlcReceiptInf
 // for sbch2bch records, change status from BchRefundable to BchRefunded
 func (bot *MarketMakerBot) handleBchRefundTxs(block *wire.MsgBlock) {
 	// TODO: add more checks
-	//refunds := htlcbch.GetHtlcRefunds(block)
-	//log.Info("HTLC refunds: ", len(refunds))
-	//for _, refund := range refunds {
-	//	record, err := bot.db.getSbch2BchRecordByBchLockTxHash(refund.PrevTxHash)
-	//	if err != nil {
-	//		continue
-	//	}
-	//	if record.Status != Sbch2BchStatusBchRefundable {
-	//		continue
-	//	}
-	//
-	//	record.Status = Sbch2BchStatusBchRefunded
-	//	record.BchUnlockTxHash = refund.TxHash
-	//	err = bot.db.updateSbch2BchRecord(record)
-	//	if err != nil {
-	//		log.Error("failed to update status of SBCH2BCH record: ", err)
-	//	}
-	//}
+	refunds := htlcbch.GetHtlcRefunds(block)
+	log.Info("HTLC refunds: ", len(refunds))
+	for _, refund := range refunds {
+		record, err := bot.db.getSbch2BchRecordByBchLockTxHash(refund.PrevTxHash)
+		if err != nil {
+			continue
+		}
+		if record.Status != Sbch2BchStatusBchLocked {
+			continue
+		}
+
+		record.Status = Sbch2BchStatusBchRefunded
+		record.BchUnlockTxHash = refund.TxHash
+		err = bot.db.updateSbch2BchRecord(record)
+		if err != nil {
+			log.Error("failed to update status of SBCH2BCH record: ", err)
+		}
+	}
 }
 
 func (bot *MarketMakerBot) scanSbchEvents() {
@@ -1040,6 +1040,12 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 		bchTimeLock := sbchTimeLockToBlocks(record.TimeLock) / 2
 		//log.Info("BCH timeLock: ", bchTimeLock)
 
+		requiredConfirmations := bchTimeLock
+		if bot.isSlaveMode {
+			// give master some time to handle it
+			requiredConfirmations += 1
+		}
+
 		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
 		if err != nil {
 			log.Error("RPC error, failed to get tx confirmations: ", err)
@@ -1047,7 +1053,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 		}
 
 		log.Info("confirmations: ", confirmations, " , bchTimeLock: ", bchTimeLock)
-		if confirmations <= int64(bchTimeLock) {
+		if confirmations <= int64(requiredConfirmations) {
 			continue
 		}
 

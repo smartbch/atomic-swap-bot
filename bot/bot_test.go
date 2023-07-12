@@ -1338,6 +1338,7 @@ func TestSbch2Bch_handleSbchCloseEventS2B(t *testing.T) {
 	_scriptHash := gethAddrBytes("htlc")
 	_userBchPkh := gethAddrBytes("ubch")
 	_bchUnlockTxHash := bchHash32("bchunlocktx")
+	_sbchCloseTxHash := gethHash32("close")
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
@@ -1359,6 +1360,7 @@ func TestSbch2Bch_handleSbchCloseEventS2B(t *testing.T) {
 	_sbchCli := newMockSbchClient(457, 999, 0)
 	_sbchCli.logs[458] = []gethtypes.Log{
 		{
+			TxHash: _sbchCloseTxHash,
 			Topics: []gethcmn.Hash{
 				htlcsbch.CloseEventId,
 				_hashLock,
@@ -1375,6 +1377,80 @@ func TestSbch2Bch_handleSbchCloseEventS2B(t *testing.T) {
 	_bot.scanSbchEvents()
 
 	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusSbchUnlocked, 100)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+
+	record0 := records[0]
+	require.Equal(t, Sbch2BchStatusSbchUnlocked, record0.Status)
+	require.Equal(t, toHex(_sbchCloseTxHash[:]), record0.SbchUnlockTxHash)
+}
+
+func TestSbch2Bch_handleBchRefundTxs(t *testing.T) {
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
+	_val := uint64(12345678)
+	_userEvmAddr := gethAddr("uevm")
+	_secret := gethHash32Bytes("secret")
+	_hashLock := gethcmn.FromHex(secretToHashLock(_secret))
+	_timeLock := uint16(888)
+	_userBchPkh := gethAddrBytes("ubch")
+	_bchLockTxHash := bchHash32("bchlocktx")
+
+	c, err := htlcbch.NewMainnetCovenant(
+		testBchPkh,
+		_userBchPkh,
+		_hashLock,
+		_timeLock,
+		0,
+	)
+	require.NoError(t, err)
+	_scriptHash, err := c.GetRedeemScriptHash()
+	require.NoError(t, err)
+	_sigScript, err := c.BuildRefundSigScript([]byte{'s', 'i', 'g'}, testBchPubKey)
+	//fmt.Println(toHex(_sigScript))
+	require.NoError(t, err)
+
+	_db := initDB(t, 123, 456)
+	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
+		SbchLockTime:     uint64(time.Now().Unix()),
+		SbchLockTxHash:   toHex(_sbchLockTxHash),
+		Value:            _val,
+		SbchSenderAddr:   _userEvmAddr.String(),
+		BchRecipientPkh:  toHex(_userBchPkh),
+		HashLock:         toHex(_hashLock),
+		TimeLock:         uint32(_timeLock),
+		HtlcScriptHash:   toHex(_scriptHash),
+		BchLockTxHash:    _bchLockTxHash.String(),
+		Secret:           "",
+		SbchUnlockTxHash: "",
+		Status:           Sbch2BchStatusBchLocked,
+	}))
+
+	_bchCli := newMockBchClient(122, 129)
+	_bchCli.blocks[127] = &wire.MsgBlock{
+		Transactions: []*wire.MsgTx{
+			{
+				TxIn: []*wire.TxIn{
+					{
+						PreviousOutPoint: wire.OutPoint{
+							Hash: _bchLockTxHash,
+						},
+						SignatureScript: _sigScript,
+					},
+				},
+				TxOut: []*wire.TxOut{},
+			},
+		},
+	}
+
+	_bot := &MarketMakerBot{
+		db:     _db,
+		bchCli: _bchCli,
+		bchPkh: testBchPkh,
+	}
+
+	_bot.scanBchBlocks()
+
+	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchRefunded, 100)
 	require.NoError(t, err)
 	require.Len(t, records, 1)
 }

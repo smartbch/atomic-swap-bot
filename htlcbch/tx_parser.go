@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gcash/bchd/txscript"
@@ -223,14 +224,27 @@ func getHtlcRefundInfo(sigScript []byte) *HtlcRefundInfo {
 	if !bytes.HasSuffix(sigScript, redeemScriptWithoutConstructorArgs) {
 		return nil
 	}
+
+	// OP_1 is ignored
 	pushes, err := txscript.PushedData(sigScript)
 	if err != nil {
 		return nil
 	}
-	if len(pushes) != 4 {
+	if len(pushes) != 3 {
 		return nil
 	}
-	if len(pushes[0]) != 32 {
+	//if len(pushes[0]) != 32 {
+	//	return nil
+	//}
+
+	disAsm, err := txscript.DisasmString(sigScript)
+	if err != nil {
+		return nil
+	}
+
+	opcodes := strings.Split(disAsm, " ")
+	if len(opcodes) != 4 ||
+		opcodes[2] != "1" {
 		return nil
 	}
 
