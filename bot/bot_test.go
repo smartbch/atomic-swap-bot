@@ -1326,3 +1326,55 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 	require.Len(t, toLate, 1)
 }
 */
+
+func TestSbch2Bch_handleSbchCloseEventS2B(t *testing.T) {
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
+	_val := uint64(12345678)
+	_userEvmAddr := gethAddr("uevm")
+	_secret := gethHash32("secret")
+	_bchLockTxHash := gethHash32("bchlock")
+	_hashLock := sha256.Sum256(_secret[:])
+	_timeLock := uint32(888)
+	_scriptHash := gethAddrBytes("htlc")
+	_userBchPkh := gethAddrBytes("ubch")
+	_bchUnlockTxHash := bchHash32("bchunlocktx")
+
+	_db := initDB(t, 123, 456)
+	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
+		SbchLockTime:     uint64(time.Now().Unix()),
+		SbchLockTxHash:   toHex(_sbchLockTxHash),
+		Value:            _val,
+		SbchSenderAddr:   _userEvmAddr.String(),
+		BchRecipientPkh:  toHex(_userBchPkh),
+		HashLock:         toHex(_hashLock[:]),
+		TimeLock:         _timeLock,
+		HtlcScriptHash:   toHex(_scriptHash),
+		BchLockTxHash:    _bchLockTxHash.String(),
+		BchUnlockTxHash:  _bchUnlockTxHash.String(),
+		Secret:           toHex(_secret[:]),
+		SbchUnlockTxHash: "",
+		Status:           Sbch2BchStatusSecretRevealed,
+	}))
+
+	_sbchCli := newMockSbchClient(457, 999, 0)
+	_sbchCli.logs[458] = []gethtypes.Log{
+		{
+			Topics: []gethcmn.Hash{
+				htlcsbch.CloseEventId,
+				_hashLock,
+				_secret,
+			},
+		},
+	}
+
+	_bot := &MarketMakerBot{
+		db:      _db,
+		sbchCli: _sbchCli,
+	}
+
+	_bot.scanSbchEvents()
+
+	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusSbchUnlocked, 100)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+}

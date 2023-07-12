@@ -33,7 +33,7 @@ import (
 +-------------------------+----------------+----------------+
 | handleBchDepositTxs     |                | New            |
 | handleBchUserDeposits   | New            | SbchLocked     |
-| handleSbchCloseEvent    | SbchLocked     | SecretRevealed |
+| handleSbchCloseEventB2S | SbchLocked     | SecretRevealed |
 | unlockBchUserDeposits   | SecretRevealed | BchUnlocked    |
 +-------------------------+----------------+----------------+
 +-------------------------+----------------+----------------+
@@ -69,7 +69,7 @@ import (
 | SBCH2BCH: too late      | old status     | new status     |
 +-------------------------+----------------+----------------+
 | handleSbchOpenEventS2B  |                | New            |
-| handleSbchUserDeposits | New            | TooLate        |
+| handleSbchUserDeposits  | New            | TooLate        |
 +-------------------------+----------------+----------------+
 
 */
@@ -516,7 +516,8 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 			bot.handleSbchOpenEventS2B(ethLog)
 			bot.handleSbchOpenEventB2S(ethLog)
 		case htlcsbch.CloseEventId:
-			bot.handleSbchCloseEvent(ethLog)
+			bot.handleSbchCloseEventB2S(ethLog)
+			bot.handleSbchCloseEventS2B(ethLog)
 		case htlcsbch.ExpireEventId:
 			bot.handleSbchExpireEvent(ethLog)
 		}
@@ -646,7 +647,7 @@ func (bot *MarketMakerBot) handleSbchOpenEventB2S(ethLog gethtypes.Log) {
 }
 
 // bch2sbch records: SbchLocked => SecretRevealed
-func (bot *MarketMakerBot) handleSbchCloseEvent(ethLog gethtypes.Log) {
+func (bot *MarketMakerBot) handleSbchCloseEventB2S(ethLog gethtypes.Log) {
 	closeLog := htlcsbch.ParseHtlcCloseLog(ethLog)
 	if closeLog == nil {
 		return
@@ -675,11 +676,37 @@ func (bot *MarketMakerBot) handleSbchCloseEvent(ethLog gethtypes.Log) {
 	}
 
 	record.Secret = toHex(closeLog.Secret[:])
-	record.SbchUnlockTxHash = toHex(ethLog.TxHash[:])
+	record.SbchUnlockTxHash = toHex(closeLog.TxHash[:])
 	record.Status = Bch2SbchStatusSecretRevealed
 	err = bot.db.updateBch2SbchRecord(record)
 	if err != nil {
 		log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
+		return
+	}
+}
+
+// sbch2bch record: SecretRevealed => SbchUnlocked
+func (bot *MarketMakerBot) handleSbchCloseEventS2B(ethLog gethtypes.Log) {
+	closeLog := htlcsbch.ParseHtlcCloseLog(ethLog)
+	if closeLog == nil {
+		return
+	}
+
+	hashLock := toHex(closeLog.HashLock[:])
+	record, err := bot.db.getSbch2BchRecordByHashLock(hashLock)
+	if err != nil {
+		return
+	}
+	if record.Status != Sbch2BchStatusSecretRevealed {
+		return
+	}
+
+	record.Secret = toHex(closeLog.Secret[:])
+	record.SbchUnlockTxHash = toHex(closeLog.TxHash[:])
+	record.Status = Sbch2BchStatusSbchUnlocked
+	err = bot.db.updateSbch2BchRecord(record)
+	if err != nil {
+		log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
 		return
 	}
 }
