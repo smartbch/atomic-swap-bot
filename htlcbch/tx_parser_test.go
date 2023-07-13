@@ -20,15 +20,30 @@ func TestIsP2SH(t *testing.T) {
 }
 
 func TestGetHtlcDepositInfo(t *testing.T) {
+	recipientPkh := gethcmn.FromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	senderPkh := gethcmn.FromHex("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+	hashLock := gethcmn.FromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	expiration := gethcmn.FromHex("1234")
+	penaltyBPS := gethcmn.FromHex("5555")
+	sbchAddr := gethcmn.FromHex("ffffffffffffffffffffffffffffffffffffffff")
 	pkScript, _ := txscript.NewScriptBuilder().
 		AddOp(txscript.OP_RETURN).
 		AddData([]byte(protoID)).
-		AddData(gethcmn.FromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")).
-		AddData(gethcmn.FromHex("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")).
-		AddData(gethcmn.FromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).
-		AddData(gethcmn.FromHex("1234")).
-		AddData(gethcmn.FromHex("5555")).
-		AddData(gethcmn.FromHex("ffffffffffffffffffffffffffffffffffffffff")).Script()
+		AddData(recipientPkh).
+		AddData(senderPkh).
+		AddData(hashLock).
+		AddData(expiration).
+		AddData(penaltyBPS).
+		AddData(sbchAddr).
+		Script()
+
+	c, err := NewTestnet3Covenant(senderPkh, recipientPkh, hashLock, 0x1234, 0x5555)
+	require.NoError(t, err)
+
+	pkScript2, err := c.BuildOpRetPkScript(sbchAddr)
+	require.NoError(t, err)
+	require.Equal(t, pkScript, pkScript2)
+
 	//fmt.Println(hex.EncodeToString(s))
 	depositInfo := getHtlcDepositInfo(pkScript)
 	require.NotNil(t, depositInfo)

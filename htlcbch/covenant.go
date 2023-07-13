@@ -1,6 +1,7 @@
 package htlcbch
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 
@@ -211,6 +212,11 @@ func (c *HtlcCovenant) makeLockTx(
 		return nil, fmt.Errorf("failed to creatte pkScript: %w", err)
 	}
 
+	opRetScript, err := c.BuildOpRetPkScript(make([]byte, 20))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build OP_RETURN: %w", err)
+	}
+
 	sigScriptFn := func(sig []byte) ([]byte, error) {
 		return payToPubKeyHashSigScript(sig, fromPk)
 	}
@@ -226,6 +232,7 @@ func (c *HtlcCovenant) makeLockTx(
 		return nil, fmt.Errorf("insufficient input value: %d < %d", totalInAmt, outAmt+minerFee)
 	}
 	builder.addOutput(toAddr, outAmt)
+	builder.addOpRet(opRetScript)
 	builder.addChange(changeAddr, changeAmt)
 	for i, utxo := range inputs {
 		builder.sign(i, utxo.Amount, prevPkScript, fromKey, sigScriptFn)
@@ -275,6 +282,26 @@ func (c *HtlcCovenant) BuildRefundSigScript() ([]byte, error) {
 		AddInt64(1). // selector
 		AddData(redeemScript).
 		Script()
+}
+
+// OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address>
+func (c *HtlcCovenant) BuildOpRetPkScript(sbchUserAddr []byte) ([]byte, error) {
+	return txscript.NewScriptBuilder().
+		AddOp(txscript.OP_RETURN).
+		AddData([]byte(protoID)).
+		AddData(c.recipientPkh).
+		AddData(c.senderPkh).
+		AddData(c.hashLock).
+		AddData(encodeBE16(c.expiration)).
+		AddData(encodeBE16(c.penaltyBPS)).
+		AddData(sbchUserAddr).
+		Script()
+}
+
+func encodeBE16(n uint16) []byte {
+	buf := [2]byte{}
+	binary.BigEndian.PutUint16(buf[:], n)
+	return buf[:]
 }
 
 func payToPubKeyHashSigScript(sig, pk []byte) ([]byte, error) {

@@ -65,6 +65,12 @@ func (builder *msgTxBuilder) addOutput(toAddr bchutil.Address, outAmt int64) *ms
 	return builder
 }
 
+func (builder *msgTxBuilder) addOpRet(pkScript []byte) *msgTxBuilder {
+	txOut := wire.NewTxOut(0, pkScript)
+	builder.msgTx.AddTxOut(txOut)
+	return builder
+}
+
 func (builder *msgTxBuilder) addChange(toAddr bchutil.Address, changeAmt int64) *msgTxBuilder {
 	if changeAmt > dustAmt {
 		return builder.addOutput(toAddr, changeAmt)

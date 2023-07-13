@@ -984,7 +984,7 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 	require.Equal(t, toHex(_hashLock), record0.HashLock)
 	require.Equal(t, uint32(36000), record0.TimeLock)
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
-	require.Equal(t, "1020df7fe6fd429758b9fee8b9a80b9f3b3780f6374c9a5d3264c5eb1acb930a",
+	require.Equal(t, "c5eb9154b5affee47b863866a4264933c805f4700a0c1041c188292a4e70c333",
 		record0.BchLockTxHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
@@ -1251,8 +1251,6 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 	require.Equal(t, Sbch2BchStatusBchRefunded, record0.Status)
 }
 
-// TODO
-/*
 func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 	_botPkh := testBchPkh
 	_userPkh := gethAddrBytes("user")
@@ -1287,8 +1285,9 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 	require.NoError(t, err)
 	scriptHash, err := covenant.GetRedeemScriptHash()
 	require.NoError(t, err)
+	opRet, _ := covenant.BuildOpRetPkScript(_userEvmAddr[:])
 
-	_bchCli := &MockBchClient{}
+	_bchCli := newMockBchClient(122, 222)
 	_bchCli.blocks[126] = &wire.MsgBlock{
 		Transactions: []*wire.MsgTx{
 			{
@@ -1299,7 +1298,7 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 						PkScript: newP2SHPkScript(scriptHash),
 					},
 					{
-						PkScript: newHtlcDepositOpRet(_botPkh, _userPkh, _hashLock, _bchTimeLock, _penaltyBPS, _userEvmAddr[:]),
+						PkScript: opRet,
 					},
 				},
 			},
@@ -1313,19 +1312,19 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 		bchPkh:       testBchPkh,
 		sbchAddr:     testEvmAddr,
 		sbchTimeLock: _sbchTimeLock,
+		isSlaveMode:  true,
 	}
 
 	_bot.scanBchBlocks()
 
-	records, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
+	newRecords, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusNew, 100)
 	require.NoError(t, err)
-	require.Len(t, records, 0)
+	require.Len(t, newRecords, 0)
 
-	toLate, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusTooLateToLockSbch, 100)
+	bchLockedRecords, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
 	require.NoError(t, err)
-	require.Len(t, toLate, 1)
+	require.Len(t, bchLockedRecords, 1)
 }
-*/
 
 func TestSbch2Bch_handleSbchCloseEventS2B(t *testing.T) {
 	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")

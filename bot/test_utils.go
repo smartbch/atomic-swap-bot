@@ -2,7 +2,6 @@ package bot
 
 import (
 	"bytes"
-	"encoding/binary"
 	"math/big"
 
 	gethcmn "github.com/ethereum/go-ethereum/common"
@@ -34,26 +33,13 @@ func newP2SHPkScript(pkh []byte) []byte {
 	return script
 }
 
-// OP_RETURN "SBAS" <bot pkh> <user pkh> <hash lock> <expiration> <penalty bps> <sbch user address>
-func newHtlcDepositOpRet(botPkh, userPkh, hashLock []byte,
+// OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address>
+func newHtlcDepositOpRet(recipientPkh, senderPkh, hashLock []byte,
 	expiration, penaltyBPS uint16, evmAddr []byte) []byte {
 
-	var timeLock [2]byte
-	binary.BigEndian.PutUint16(timeLock[:], expiration)
-	var penalty [2]byte
-	binary.BigEndian.PutUint16(penalty[:], penaltyBPS)
-
-	script, _ := txscript.NewScriptBuilder().
-		AddOp(txscript.OP_RETURN).
-		AddData([]byte{'S', 'B', 'A', 'S'}).
-		AddData(botPkh).
-		AddData(userPkh).
-		AddData(hashLock).
-		AddData(timeLock[:]).
-		AddData(penalty[:]).
-		AddData(evmAddr).
-		Script()
-	return script
+	c, _ := htlcbch.NewTestnet3Covenant(senderPkh, recipientPkh, hashLock, expiration, penaltyBPS)
+	opRetScript, _ := c.BuildOpRetPkScript(evmAddr)
+	return opRetScript
 }
 
 func reverseBytes(bs []byte) []byte {
