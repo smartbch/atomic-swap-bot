@@ -165,7 +165,7 @@ func getHtlcReceiptInfo(sigScript []byte) *HtlcReceiptInfo {
 	if err != nil {
 		return nil
 	}
-	if len(pushes) != 5 {
+	if len(pushes) != 3 {
 		return nil
 	}
 	if len(pushes[0]) != 32 {
@@ -178,10 +178,8 @@ func getHtlcReceiptInfo(sigScript []byte) *HtlcReceiptInfo {
 
 	// TODO: more checks
 	//secret := pushes[0]
-	//recipientPk := pushes[1]
-	//recipientSig := pushes[2]
-	//sel := pushes[3]
-	//redeemScript := pushes[4]
+	//sel := pushes[1]
+	//redeemScript := pushes[2]
 	//
 	//if !bytes.HasSuffix(redeemScript, redeemScriptWithoutConstructorArgs) {
 	//	return nil
@@ -226,13 +224,13 @@ func getHtlcRefundInfo(sigScript []byte) *HtlcRefundInfo {
 	}
 
 	// OP_1 is ignored
-	pushes, err := txscript.PushedData(sigScript)
-	if err != nil {
-		return nil
-	}
-	if len(pushes) != 3 {
-		return nil
-	}
+	//pushes, err := txscript.PushedData(sigScript)
+	//if err != nil {
+	//	return nil
+	//}
+	//if len(pushes) != 1 {
+	//	return nil
+	//}
 	//if len(pushes[0]) != 32 {
 	//	return nil
 	//}
@@ -243,16 +241,14 @@ func getHtlcRefundInfo(sigScript []byte) *HtlcRefundInfo {
 	}
 
 	opcodes := strings.Split(disAsm, " ")
-	if len(opcodes) != 4 ||
-		opcodes[2] != "1" {
+	if len(opcodes) != 2 ||
+		opcodes[0] != "1" {
 		return nil
 	}
 
 	return &HtlcRefundInfo{}
 
 	// TODO: more checks
-	//senderPk := pushes[0]
-	//senderSig := pushes[1]
-	//sel := pushes[2]
-	//redeemScript := pushes[3]
+	//sel := pushes[0]
+	//redeemScript := pushes[1]
 }

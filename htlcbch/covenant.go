@@ -1,7 +1,6 @@
 package htlcbch
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
 
@@ -14,8 +13,8 @@ import (
 )
 
 const (
-	// cashc --hex ../../atomic-swap-covenants/covenants/HTLC4.cash
-	RedeemScriptWithoutConstructorArgsHex = "0x5579009c63c0009d587aa8537a885579827700a0635679a952798855795779ad670376a91452797e0288ac7e00cd788800cc00c6a26975686d6d6d755167557a519dc0009d537ab27500c67600567900a06352795779950210279677527978947b757c0376a91455797e0288ac7e51cd788851cc5279a26975685779827700a0635879a954798857795979ad670376a91454797e0288ac7e00cd788800cc5379a26975686d6d6d6d755168"
+	// cashc --hex ../atomic-swap-covenants/covenants/HTLC4.cash
+	RedeemScriptWithoutConstructorArgsHex = "0x5579009c63c0009d567aa8537a880376a9147b7e0288ac7e00cd8800cc00c602d00794a2696d6d5167557a519dc0009d537ab27500c67600567900a06352795779950210279677527978947b757c0376a91455797e0288ac7e51cd788851cc5279a26975680376a914547a7e0288ac7e00cd8800cc7b02d00794a2696d6d755168"
 )
 
 var (
@@ -115,53 +114,40 @@ func (c *HtlcCovenant) MakeReceiveTx(
 	txid []byte, vout uint32, inAmt int64, // input info
 	toAddr bchutil.Address, minerFeeRate uint64, // output info
 	secret []byte,
-	privKey *bchec.PrivateKey,
 ) (*wire.MsgTx, error) {
 	// estimate miner fee
-	tx, err := c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, 1000, secret, privKey)
+	tx, err := c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, 1000, secret)
 	if err != nil {
 		return nil, err
 	}
 	// make tx
 	minerFee := int64(len(MsgTxToBytes(tx))) * int64(minerFeeRate)
-	return c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, minerFee, secret, privKey)
+	return c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, minerFee, secret)
 }
 
 func (c *HtlcCovenant) MakeRefundTx(
 	txid []byte, vout uint32, inAmt int64, // input info
 	toAddr bchutil.Address, minerFeeRate uint64, // output info
-	privKey *bchec.PrivateKey,
 ) (*wire.MsgTx, error) {
 	// estimate miner fee
-	tx, err := c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, 1000, nil, privKey)
+	tx, err := c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, 1000, nil)
 	if err != nil {
 		return nil, err
 	}
 	// make tx
 	minerFee := int64(len(MsgTxToBytes(tx))) * int64(minerFeeRate)
-	return c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, minerFee, nil, privKey)
+	return c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, minerFee, nil)
 }
 
 func (c *HtlcCovenant) makeReceiveOrRefundTx(
 	txid []byte, vout uint32, inAmt int64, // input info
 	toAddr bchutil.Address, minerFee int64, // output info
 	secret []byte,
-	privKey *bchec.PrivateKey,
 ) (*wire.MsgTx, error) {
 
-	pbk := privKey.PubKey().SerializeCompressed()
-	pkh := bchutil.Hash160(pbk)
-	isReceive := bytes.Equal(pkh, c.recipientPkh)
-
-	// check args
-	if isReceive {
-		if len(secret) != 32 {
-			return nil, fmt.Errorf("secret is not 32 bytes")
-		}
-	} else { // refund
-		if !bytes.Equal(pkh, c.senderPkh) {
-			return nil, fmt.Errorf("wrong priv key")
-		}
+	isReceive := len(secret) > 0
+	if isReceive && len(secret) != 32 {
+		return nil, fmt.Errorf("secret is not 32 bytes")
 	}
 
 	seq := uint32(0)
@@ -169,22 +155,14 @@ func (c *HtlcCovenant) makeReceiveOrRefundTx(
 		seq = uint32(c.expiration)
 	}
 
-	redeemScript, err := c.BuildFullRedeemScript()
+	sigScript, err := c.BuildReceiveOrRefundSigScript(secret)
 	if err != nil {
 		return nil, err
 	}
 
-	sigScriptFn := func(sig []byte) ([]byte, error) {
-		if isReceive {
-			return c.BuildReceiveSigScript(sig, pbk, secret)
-		}
-		return c.BuildRefundSigScript(sig, pbk)
-	}
-
 	return newMsgTxBuilder().
-		addInput(txid, vout, seq).
+		addInput(txid, vout, seq, sigScript).
 		addOutput(toAddr, inAmt-minerFee).
-		sign(0, inAmt, redeemScript, privKey, sigScriptFn).
 		build()
 }
 
@@ -240,7 +218,7 @@ func (c *HtlcCovenant) makeLockTx(
 	builder := newMsgTxBuilder()
 	var totalInAmt int64
 	for _, input := range inputs {
-		builder.addInput(input.TxID, input.Vout, 0)
+		builder.addInput(input.TxID, input.Vout, 0, nil)
 		totalInAmt += input.Amount
 	}
 	changeAmt := totalInAmt - outAmt - minerFee
@@ -266,7 +244,15 @@ func (c *HtlcCovenant) BuildFullRedeemScript() ([]byte, error) {
 		Script()
 }
 
-func (c *HtlcCovenant) BuildReceiveSigScript(recipientSig, recipientPk, secret []byte) ([]byte, error) {
+func (c *HtlcCovenant) BuildReceiveOrRefundSigScript(secret []byte) ([]byte, error) {
+	if len(secret) > 0 {
+		return c.BuildReceiveSigScript(secret)
+	} else {
+		return c.BuildRefundSigScript()
+	}
+}
+
+func (c *HtlcCovenant) BuildReceiveSigScript(secret []byte) ([]byte, error) {
 	redeemScript, err := c.BuildFullRedeemScript()
 	if err != nil {
 		return nil, err
@@ -274,22 +260,18 @@ func (c *HtlcCovenant) BuildReceiveSigScript(recipientSig, recipientPk, secret [
 
 	return txscript.NewScriptBuilder().
 		AddData(secret).
-		AddData(recipientPk).
-		AddData(recipientSig).
 		AddInt64(0). // selector
 		AddData(redeemScript).
 		Script()
 }
 
-func (c *HtlcCovenant) BuildRefundSigScript(senderSig, senderPk []byte) ([]byte, error) {
+func (c *HtlcCovenant) BuildRefundSigScript() ([]byte, error) {
 	redeemScript, err := c.BuildFullRedeemScript()
 	if err != nil {
 		return nil, err
 	}
 
 	return txscript.NewScriptBuilder().
-		AddData(senderPk).
-		AddData(senderSig).
 		AddInt64(1). // selector
 		AddData(redeemScript).
 		Script()

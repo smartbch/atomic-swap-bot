@@ -25,7 +25,7 @@ func newMsgTxBuilder() *msgTxBuilder {
 	}
 }
 
-func (builder *msgTxBuilder) addInput(txid []byte, vout uint32, seq uint32) *msgTxBuilder {
+func (builder *msgTxBuilder) addInput(txid []byte, vout uint32, seq uint32, sigScript []byte) *msgTxBuilder {
 	if builder.err != nil {
 		return builder
 	}
@@ -41,6 +41,9 @@ func (builder *msgTxBuilder) addInput(txid []byte, vout uint32, seq uint32) *msg
 	txIn := wire.NewTxIn(outPoint, nil)
 	if seq > 0 {
 		txIn.Sequence = seq
+	}
+	if len(sigScript) > 0 {
+		txIn.SignatureScript = sigScript
 	}
 	builder.msgTx.AddTxIn(txIn)
 	return builder

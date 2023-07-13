@@ -1058,7 +1058,6 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 		p2shAddr, _ := covenant.GetP2SHAddress()
 		log.Info("covenant: ", p2shAddr)
 
-		// TODO: not work in slave mode
 		tx, err := covenant.MakeReceiveTx(
 			gethcmn.FromHex(record.BchLockTxHash),
 			0,
@@ -1066,7 +1065,6 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 			bot.bchAddr,
 			bot.bchReceiveMinerFeeRate,
 			gethcmn.FromHex(record.Secret),
-			bot.bchPrivKey,
 		)
 		if err != nil {
 			log.Error("failed to create BCH tx: ", err)
@@ -1185,7 +1183,6 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 			bchValMinusFee,
 			bot.bchAddr,
 			bot.bchRefundMinerFeeRate,
-			bot.bchPrivKey,
 		)
 		if err != nil {
 			log.Error("failed to make refund tx: ", err)

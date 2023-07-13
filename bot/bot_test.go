@@ -482,7 +482,7 @@ func TestBch2Sbch_botUnlockBch(t *testing.T) {
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
 	require.Equal(t, toHex(_sbchLockTxHash), record0.SbchLockTxHash)
 	require.Equal(t, toHex(_secret), record0.Secret)
-	require.Equal(t, "5447476b1799d9744a78a641ab1e313615f96fe06fcee59ce3b56f36d30630f4",
+	require.Equal(t, "df573ad72839a87692a6e7b12ce4687a7704c6485a5ca3a0c29a5efea21b30c6",
 		record0.BchUnlockTxHash)
 	require.Equal(t, Bch2SbchStatusBchUnlocked, record0.Status)
 }
@@ -649,7 +649,7 @@ func TestBch2Sbch_handleBchReceiptTxs(t *testing.T) {
 	require.NoError(t, err)
 	_scriptHash, err := c.GetRedeemScriptHash()
 	require.NoError(t, err)
-	_sigScript, err := c.BuildReceiveSigScript([]byte{'s', 'i', 'g'}, testBchPubKey, _secret)
+	_sigScript, err := c.BuildReceiveSigScript(_secret)
 	require.NoError(t, err)
 
 	_db := initDB(t, 123, 456)
@@ -697,7 +697,7 @@ func TestBch2Sbch_handleBchReceiptTxs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, bchUnlocked, 1)
 	record0 := bchUnlocked[0]
-	require.Equal(t, "93e1119f2af3efda8bce6077be24e15c583ffc501621f2914335f507179199bc",
+	require.Equal(t, "e3721d62eef05705b710f0d2e6573d1ef59bbf9e67c285f1303e25eeaf744202",
 		record0.BchUnlockTxHash)
 }
 
@@ -820,7 +820,7 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 	require.Equal(t, toHex(_userBchPkh), record0.BchRecipientPkh)
 	require.Equal(t, toHex(_hashLock[:]), record0.HashLock)
 	require.Equal(t, uint32(12*3600), record0.TimeLock)
-	require.Equal(t, "7e7dcbfcc8c9ce21ee2d5f0a9e73e64469cba144",
+	require.Equal(t, "d250f8efcee9af83dadbc30ece9f3481b51a2523",
 		record0.HtlcScriptHash)
 	require.Equal(t, "", record0.BchLockTxHash)
 	require.Equal(t, "", record0.Secret)
@@ -984,7 +984,7 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 	require.Equal(t, toHex(_hashLock), record0.HashLock)
 	require.Equal(t, uint32(36000), record0.TimeLock)
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
-	require.Equal(t, "a19d7ad2f4013aebb8d4360478d242992fad16ce0aaf230a240a2fc7836a1257",
+	require.Equal(t, "1020df7fe6fd429758b9fee8b9a80b9f3b3780f6374c9a5d3264c5eb1acb930a",
 		record0.BchLockTxHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
@@ -1060,7 +1060,7 @@ func TestSbch2Bch_userUnlockBch(t *testing.T) {
 	require.NoError(t, err)
 	_scriptHash, err := c.GetRedeemScriptHash()
 	require.NoError(t, err)
-	_sigScript, err := c.BuildReceiveSigScript([]byte{'s', 'i', 'g'}, testBchPubKey, _secret)
+	_sigScript, err := c.BuildReceiveSigScript(_secret)
 	require.NoError(t, err)
 
 	_db := initDB(t, 123, 456)
@@ -1117,7 +1117,7 @@ func TestSbch2Bch_userUnlockBch(t *testing.T) {
 	require.Equal(t, uint32(888), record0.TimeLock)
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
 	require.Equal(t, _bchLockTxHash.String(), record0.BchLockTxHash)
-	require.Equal(t, "a9c6d5a3d9a35b22738c24d47ea374f116cfdbff9209979435c5f459787b0d91",
+	require.Equal(t, "7b3f7b928bd4cd3e265eb81b93883afc7293a6f5f6b13eb1bc73f7d8a6f558f5",
 		record0.BchUnlockTxHash)
 	require.Equal(t, toHex(_secret), record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
@@ -1246,7 +1246,7 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 	require.Equal(t, "", record0.BchUnlockTxHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
-	require.Equal(t, "5b65aa3b16069ebd2ff6ab0cec804ad052f85824e600d9fb44614d39acb03ff2",
+	require.Equal(t, "1697cd6dddc9182ebac736c2dfc15e9057a7c279b0d1da323b0163dc57a4ce97",
 		record0.BchRefundTxHash)
 	require.Equal(t, Sbch2BchStatusBchRefunded, record0.Status)
 }
@@ -1405,7 +1405,7 @@ func TestSbch2Bch_handleBchRefundTxs(t *testing.T) {
 	require.NoError(t, err)
 	_scriptHash, err := c.GetRedeemScriptHash()
 	require.NoError(t, err)
-	_sigScript, err := c.BuildRefundSigScript([]byte{'s', 'i', 'g'}, testBchPubKey)
+	_sigScript, err := c.BuildRefundSigScript()
 	//fmt.Println(toHex(_sigScript))
 	require.NoError(t, err)
 

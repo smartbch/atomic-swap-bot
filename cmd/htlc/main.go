@@ -121,11 +121,11 @@ func cmdUnlock() *cli.Command {
 	return &cli.Command{
 		Name: "unlock",
 		Flags: []cli.Flag{
-			flagWIF, flagFromAddr, flagSecret, flagExpiration, flagPenaltyBPS,
+			flagFromAddr, flagSecret, flagExpiration, flagPenaltyBPS,
 			flagUTXO, flagMinerFeeRate, flagDryRun,
 		},
 		Action: func(ctx *cli.Context) error {
-			wif, pkh, _, err := decodeWIF(ctx.String(flagNameWIF))
+			_, pkh, _, err := decodeWIF(ctx.String(flagNameWIF))
 			if err != nil {
 				return err
 			}
@@ -162,7 +162,7 @@ func cmdUnlock() *cli.Command {
 			fmt.Println("hash lock:", hex.EncodeToString(hashLock))
 			fmt.Println("htlc p2sh:", hex.EncodeToString(cP2SH))
 
-			tx, err := c.MakeReceiveTx(txid, uint32(vout), int64(val), fromAddr, minerFeeRate, secret, wif.PrivKey)
+			tx, err := c.MakeReceiveTx(txid, uint32(vout), int64(val), fromAddr, minerFeeRate, secret)
 			if err != nil {
 				return err
 			}
@@ -185,7 +185,7 @@ func cmdRefund() *cli.Command {
 			flagUTXO, flagMinerFeeRate, flagDryRun,
 		},
 		Action: func(ctx *cli.Context) error {
-			wif, pkh, _, err := decodeWIF(ctx.String(flagNameWIF))
+			_, pkh, _, err := decodeWIF(ctx.String(flagNameWIF))
 			if err != nil {
 				return err
 			}
@@ -222,7 +222,7 @@ func cmdRefund() *cli.Command {
 			fmt.Println("hash lock:", hex.EncodeToString(hashLock))
 			fmt.Println("htlc p2sh:", hex.EncodeToString(cP2SH))
 
-			tx, err := c.MakeRefundTx(txid, uint32(vout), int64(val), toAddr, minerFeeRate, wif.PrivKey)
+			tx, err := c.MakeRefundTx(txid, uint32(vout), int64(val), toAddr, minerFeeRate)
 			if err != nil {
 				return err
 			}
