@@ -37,7 +37,7 @@ BCH=>SBCH, normal flow:
  +----------+    +----------+    +-------------+    +-----------+    +------------+    +-----------+
  |   user   |    |   bot    |    | bot(master) |    |   user    |    |    bot     |    |    bot    |
  +----------+ => +----------+ => +-------------+ => +-----------+ => +------------+ => +-----------+
- | sned BCH |    | find BCH |    | send sBCH   |    | send sBCH |    | find sBCH  |    | send BCH  |
+ | send BCH |    | find BCH |    | send sBCH   |    | send sBCH |    | find sBCH  |    | send BCH  |
  | lock tx  |    | lock tx  |    |  lock tx    |    | unlock tx |    | unlock log |    | unlock tx |
  +----------+    +----------+    +-------------+    +-----------+    +------------+    +-----------+
                       /               /                     _______________/       __________/
@@ -60,11 +60,11 @@ BCH=>SBCH, refund:
  +----------+    +----------+    +-------------+      +-----------+
  |   user   |    |   bot    |    | bot(master) |      |    bot    |
  +----------+ => +----------+ => +-------------+ ===> +-----------+
- | sned BCH |    | find BCH |    | send sBCH   |      | send sBCH |
+ | send BCH |    | find BCH |    | send sBCH   |      | send sBCH |
  | lock tx  |    | lock tx  |    |  lock tx    |      | refund tx |
  +----------+    +----------+    +-------------+      +-----------+
                       /               /                     /
-                     /               /                     / 
+                     /               /                     /
                 +=====+      +============+      +==============+
                 | New | ---> | SbchLocked | ---> | SbchRefunded |
                 +=====+      +============+      +==============+
@@ -83,7 +83,7 @@ SBCH=>BCH, normal flow:
  +----------+    +----------+    +-------------+    +-----------+    +------------+    +-----------+
  |   user   |    |   bot    |    | bot(master) |    |   user    |    |    bot     |    |    bot    |
  +----------+ => +----------+ => +-------------+ => +-----------+ => +------------+ => +-----------+
- | sned sBCH|    | find sBCH|    | send BCH    |    | send BCH  |    | find BCH   |    | send sBCH |
+ | send sBCH|    | find sBCH|    | send BCH    |    | send BCH  |    | find BCH   |    | send sBCH |
  | lock tx  |    | lock log |    |  lock tx    |    | unlock tx |    | unlock tx  |    | unlock tx |
  +----------+    +----------+    +-------------+    +-----------+    +------------+    +-----------+
                       /               /                     _______________/       __________/
@@ -106,11 +106,11 @@ SBCH=>BCH, refund:
  +----------+    +----------+    +-------------+      +-----------+
  |   user   |    |   bot    |    | bot(master) |      |    bot    |
  +----------+ => +----------+ => +-------------+ ===> +-----------+
- | sned sBCH|    | find sBCH|    | send BCH    |      | send BCH  |
+ | send sBCH|    | find sBCH|    | send BCH    |      | send BCH  |
  | lock tx  |    | lock log |    |  lock tx    |      | refund tx |
  +----------+    +----------+    +-------------+      +-----------+
                       /               /                     /
-                     /               /                     / 
+                     /               /                     /
                 +=====+      +============+      +==============+
                 | New | ---> |  BchLocked | ---> |  BchRefunded |
                 +=====+      +============+      +==============+
@@ -124,9 +124,6 @@ SBCH=>BCH, refund:
                                  +-------------+      +-----------+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-
-
-
 
 /*
 M: master, S: slave
