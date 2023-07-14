@@ -53,7 +53,7 @@ func TestFindUTXOs(t *testing.T) {
 //func TestGetTxConfirmations(t *testing.T) {
 //	addr, err := bchutil.DecodeAddress("bchtest:qqgy70efq403k2mda04ku6dx7r2nfuq4s5u6xh83hw", &chaincfg.TestNet3Params)
 //	require.NoError(t, err)
-//	bchCli, err := newBchClient("http://user:pass@127.0.0.1:48334", addr)
+//	bchCli, err := NewBchClient("http://user:pass@127.0.0.1:48334", addr)
 //	require.NoError(t, err)
 //	n, err := bchCli.getTxConfirmations("2161067da799837b10f175bbfdfcb1beea19a36606b1239c1ee31871eea6c1c0")
 //	require.NoError(t, err)

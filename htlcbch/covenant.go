@@ -113,50 +113,51 @@ func (c *HtlcCovenant) GetP2SHAddress() (string, error) {
 
 func (c *HtlcCovenant) MakeReceiveTx(
 	txid []byte, vout uint32, inAmt int64, // input info
-	toAddr bchutil.Address, minerFeeRate uint64, // output info
+	minerFeeRate uint64,
 	secret []byte,
 ) (*wire.MsgTx, error) {
 	// estimate miner fee
-	tx, err := c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, 1000, secret)
+	tx, err := c.makeReceiveTx(txid, vout, inAmt, secret, 1000)
 	if err != nil {
 		return nil, err
 	}
 	// make tx
 	minerFee := int64(len(MsgTxToBytes(tx))) * int64(minerFeeRate)
-	return c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, minerFee, secret)
+	return c.makeReceiveTx(txid, vout, inAmt, secret, minerFee)
 }
 
 func (c *HtlcCovenant) MakeRefundTx(
 	txid []byte, vout uint32, inAmt int64, // input info
-	toAddr bchutil.Address, minerFeeRate uint64, // output info
+	minerFeeRate uint64,
 ) (*wire.MsgTx, error) {
 	// estimate miner fee
-	tx, err := c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, 1000, nil)
+	tx, err := c.makeRefundTx(txid, vout, inAmt, 1000)
 	if err != nil {
 		return nil, err
 	}
 	// make tx
 	minerFee := int64(len(MsgTxToBytes(tx))) * int64(minerFeeRate)
-	return c.makeReceiveOrRefundTx(txid, vout, inAmt, toAddr, minerFee, nil)
+	return c.makeRefundTx(txid, vout, inAmt, minerFee)
 }
 
-func (c *HtlcCovenant) makeReceiveOrRefundTx(
+func (c *HtlcCovenant) makeReceiveTx(
 	txid []byte, vout uint32, inAmt int64, // input info
-	toAddr bchutil.Address, minerFee int64, // output info
 	secret []byte,
+	minerFee int64,
 ) (*wire.MsgTx, error) {
 
-	isReceive := len(secret) > 0
-	if isReceive && len(secret) != 32 {
+	if len(secret) != 32 {
 		return nil, fmt.Errorf("secret is not 32 bytes")
 	}
 
 	seq := uint32(0)
-	if !isReceive {
-		seq = uint32(c.expiration)
+
+	sigScript, err := c.BuildReceiveSigScript(secret)
+	if err != nil {
+		return nil, err
 	}
 
-	sigScript, err := c.BuildReceiveOrRefundSigScript(secret)
+	toAddr, err := bchutil.NewAddressPubKeyHash(c.recipientPkh, c.net)
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +165,50 @@ func (c *HtlcCovenant) makeReceiveOrRefundTx(
 	return newMsgTxBuilder().
 		addInput(txid, vout, seq, sigScript).
 		addOutput(toAddr, inAmt-minerFee).
+		build()
+}
+
+func (c *HtlcCovenant) makeRefundTx(
+	txid []byte, vout uint32, inAmt int64, // input info
+	minerFee int64,
+) (*wire.MsgTx, error) {
+
+	seq := uint32(c.expiration)
+
+	sigScript, err := c.BuildRefundSigScript()
+	if err != nil {
+		return nil, err
+	}
+
+	senderAddr, err := bchutil.NewAddressPubKeyHash(c.senderPkh, c.net)
+	if err != nil {
+		return nil, err
+	}
+
+	// no penalty
+	if c.penaltyBPS == 0 {
+		return newMsgTxBuilder().
+			addInput(txid, vout, seq, sigScript).
+			addOutput(senderAddr, inAmt-minerFee).
+			build()
+	}
+
+	// consider penalty
+
+	recipientAddr, err := bchutil.NewAddressPubKeyHash(c.recipientPkh, c.net)
+	if err != nil {
+		return nil, err
+	}
+
+	penaltyVal := inAmt * int64(c.penaltyBPS) / 10000
+	if penaltyVal < 546 {
+		penaltyVal = 546
+	}
+
+	return newMsgTxBuilder().
+		addInput(txid, vout, seq, sigScript).
+		addOutput(senderAddr, inAmt-penaltyVal-minerFee).
+		addOutput(recipientAddr, penaltyVal).
 		build()
 }
 
@@ -249,14 +294,6 @@ func (c *HtlcCovenant) BuildFullRedeemScript() ([]byte, error) {
 		AddData(c.senderPkh).
 		AddOps(redeemScriptWithoutConstructorArgs).
 		Script()
-}
-
-func (c *HtlcCovenant) BuildReceiveOrRefundSigScript(secret []byte) ([]byte, error) {
-	if len(secret) > 0 {
-		return c.BuildReceiveSigScript(secret)
-	} else {
-		return c.BuildRefundSigScript()
-	}
 }
 
 func (c *HtlcCovenant) BuildReceiveSigScript(secret []byte) ([]byte, error) {

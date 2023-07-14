@@ -176,12 +176,13 @@ Locking example:
 
 ```bash
 go run github.com/smartbch/atomic-swap-bot/cmd/htlc lock \
-	--wif=cUR6VdPBVn3VQWzJZ9Pr7owhWg3u4Tzoy1w5rstrNKouycpDLUdb \
-	--to-addr=bchtest:qpxsyl7aqkznqgnyjg476k9c4pxnsamvevm9fv3cfh \
+    --rpc-url=http://user:pass@127.0.0.1:48334 \
+	--wif=cPoiXWwPS9Xtvoe6DJ2CMmCiaJqUDPKX1vBRsaQNA6C9HKwBTxte \
+	--to-addr=bchtest:qzf2nglh7zaatd4xdw2ahp540hnzw77yjymjgxkj0w \
 	--secret=123 \
-	--expiration=36 \
+	--expiration=2 \
 	--penalty-bps=500 \
-	--utxo=bba060e1756a596ca99c45b4c5628a52eb7c28e53fe6f7009512a65d41c3fbf5:2:70000 \
+	--utxo=44ce4fce907ecbc8d5070ac38aeb32df85c8cdb0aea07f592cae4c4553f828bc:2:9904419 \
 	--amt=5000 \
 	--miner-fee-rate=2 \
 	--dry-run=true
@@ -191,12 +192,13 @@ Unlocking example:
 
 ```bash
 go run github.com/smartbch/atomic-swap-bot/cmd/htlc unlock \
-	--wif=cSuHicBzB3NHUMQgNUniGXvXvLwZYArg2AUt4G6NgEqsc1CZ2yRd \
-	--from-addr=bchtest:qzj8ze00ga7fnffum6uydfmg0grf6l0j0s5t4h0xhn \
+    --rpc-url=http://user:pass@127.0.0.1:48334 \
+	--wif=cUw45Hq2UkDYqYWz9JwMJGJuhETFWFN4AAY87WffFRSD8aAV9dZy \
+	--from-addr=bchtest:qz9hn65eumzpsam2njwjchwqwj6yqny22uzluhy5d0 \
 	--secret=123 \
-	--expiration=36 \
+	--expiration=2 \
 	--penalty-bps=500 \
-	--utxo=bba060e1756a596ca99c45b4c5628a52eb7c28e53fe6f7009512a65d41c3fbf5:2:70000 \
+	--utxo=5d59029b596c45c39be73f49d4c9210f042813defa6f7d5ef575452064c017c2:0:5000 \
 	--miner-fee-rate=2 \
 	--dry-run=true
 ```
@@ -205,12 +207,13 @@ Refunding example:
 
 ```bash
 go run github.com/smartbch/atomic-swap-bot/cmd/htlc refund \
-	--wif=cUR6VdPBVn3VQWzJZ9Pr7owhWg3u4Tzoy1w5rstrNKouycpDLUdb \
-	--to-addr=bchtest:qpxsyl7aqkznqgnyjg476k9c4pxnsamvevm9fv3cfh \
+    --rpc-url=http://user:pass@127.0.0.1:48334 \
+	--wif=cPoiXWwPS9Xtvoe6DJ2CMmCiaJqUDPKX1vBRsaQNA6C9HKwBTxte \
+	--to-addr=bchtest:qzf2nglh7zaatd4xdw2ahp540hnzw77yjymjgxkj0w \
 	--secret=123 \
-	--expiration=36 \
+	--expiration=2 \
 	--penalty-bps=500 \
-	--utxo=bba060e1756a596ca99c45b4c5628a52eb7c28e53fe6f7009512a65d41c3fbf5:2:70000 \
+	--utxo=a55bdc2751dc4f3c347a52cc45f063e8c0c3781e5f3fc2c7dea49bc10098d694:0:5000 \
 	--miner-fee-rate=2 \
 	--dry-run=true
 ```

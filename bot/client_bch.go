@@ -19,7 +19,7 @@ type IBchClient interface {
 	getUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentResult, error)
 	getAllUTXOs() ([]btcjson.ListUnspentResult, error)
 	getTxConfirmations(txHashHex string) (int64, error)
-	sendTx(tx *wire.MsgTx) (*chainhash.Hash, error)
+	SendTx(tx *wire.MsgTx) (*chainhash.Hash, error)
 }
 
 type BchClient struct {
@@ -27,7 +27,7 @@ type BchClient struct {
 	botAddr bchutil.Address
 }
 
-func newBchClient(rpcUrlStr string, botAddr bchutil.Address) (*BchClient, error) {
+func NewBchClient(rpcUrlStr string, botAddr bchutil.Address) (*BchClient, error) {
 	rpcUrl, err := url.Parse(rpcUrlStr)
 	if err != nil {
 		return nil, err
@@ -131,6 +131,6 @@ func (c *BchClient) getTxConfirmations(txHashHex string) (int64, error) {
 	return int64(tx.Confirmations), nil
 }
 
-func (c *BchClient) sendTx(tx *wire.MsgTx) (*chainhash.Hash, error) {
+func (c *BchClient) SendTx(tx *wire.MsgTx) (*chainhash.Hash, error) {
 	return c.client.SendRawTransaction(tx, false)
 }

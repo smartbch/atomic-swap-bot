@@ -254,7 +254,7 @@ func NewBot(
 	sbchAddr := gethcrypto.PubkeyToAddress(sbchPrivKey.PublicKey)
 
 	// create RPC clients
-	bchCli, err := newBchClient(bchRpcUrl, bchAddr)
+	bchCli, err := NewBchClient(bchRpcUrl, bchAddr)
 	if err != nil {
 		return nil, fmt.Errorf("faield to create BCH RPC client: %w", err)
 	}
@@ -1002,7 +1002,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 		}
 		log.Info("BCH tx hex: ", htlcbch.MsgTxToHex(tx))
 
-		txHash, err := bot.bchCli.sendTx(tx)
+		txHash, err := bot.bchCli.SendTx(tx)
 		if err != nil {
 			log.Error("failed to send BCH tx: ", err)
 
@@ -1062,7 +1062,6 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 			gethcmn.FromHex(record.BchLockTxHash),
 			0,
 			int64(record.Value),
-			bot.bchAddr,
 			bot.bchReceiveMinerFeeRate,
 			gethcmn.FromHex(record.Secret),
 		)
@@ -1071,7 +1070,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 			continue
 		}
 		log.Info("tx: ", htlcbch.MsgTxToHex(tx))
-		txHash, err := bot.bchCli.sendTx(tx)
+		txHash, err := bot.bchCli.SendTx(tx)
 		if err != nil {
 			log.Error("failed to send BCH tx: ", err)
 			continue
@@ -1181,7 +1180,6 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 			gethcmn.FromHex(record.BchLockTxHash),
 			0,
 			bchValMinusFee,
-			bot.bchAddr,
 			bot.bchRefundMinerFeeRate,
 		)
 		if err != nil {
@@ -1190,7 +1188,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 		}
 
 		log.Info("refund tx: ", htlcbch.MsgTxToHex(tx))
-		txHash, err := bot.bchCli.sendTx(tx)
+		txHash, err := bot.bchCli.SendTx(tx)
 		if err != nil {
 			log.Error("failed to send refund tx: ", err)
 			continue

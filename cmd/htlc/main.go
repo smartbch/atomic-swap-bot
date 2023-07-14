@@ -13,10 +13,12 @@ import (
 	"github.com/gcash/bchutil"
 	"github.com/urfave/cli/v2"
 
+	"github.com/smartbch/atomic-swap-bot/bot"
 	"github.com/smartbch/atomic-swap-bot/htlcbch"
 )
 
 const (
+	flagNameRpcUrl       = "rpc-url"
 	flagNameWIF          = "wif"
 	flagNameFromAddr     = "from-addr"
 	flagNameToAddr       = "to-addr"
@@ -30,6 +32,7 @@ const (
 )
 
 var (
+	flagRpcUrl       = &cli.StringFlag{Name: flagNameRpcUrl, Required: false}
 	flagWIF          = &cli.StringFlag{Name: flagNameWIF, Required: true}
 	flagFromAddr     = &cli.StringFlag{Name: flagNameFromAddr, Required: false}
 	flagToAddr       = &cli.StringFlag{Name: flagNameToAddr, Required: false}
@@ -60,10 +63,10 @@ func cmdLock() *cli.Command {
 		Name: "lock",
 		Flags: []cli.Flag{
 			flagWIF, flagToAddr, flagSecret, flagExpiration, flagPenaltyBPS,
-			flagUTXO, flagAmt, flagMinerFeeRate, flagDryRun,
+			flagUTXO, flagAmt, flagMinerFeeRate, flagDryRun, flagRpcUrl,
 		},
 		Action: func(ctx *cli.Context) error {
-			wif, pkh, _, err := decodeWIF(ctx.String(flagNameWIF))
+			wif, pkh, addr, err := decodeWIF(ctx.String(flagNameWIF))
 			if err != nil {
 				return err
 			}
@@ -107,11 +110,20 @@ func cmdLock() *cli.Command {
 				return err
 			}
 
-			if ctx.Bool(flagNameDryRun) {
-				fmt.Println("locking tx:", htlcbch.MsgTxToHex(tx))
+			fmt.Println("locking tx:", htlcbch.MsgTxToHex(tx))
+
+			rpcRrl := ctx.String(flagNameRpcUrl)
+			if ctx.Bool(flagNameDryRun) || rpcRrl == "" {
+				return nil
 			}
 
-			// TODO: broadcast tx
+			bchCli, err := bot.NewBchClient(rpcRrl, addr)
+			txHash, err := bchCli.SendTx(tx)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("tx hash:", txHash.String())
 			return nil
 		},
 	}
@@ -121,15 +133,15 @@ func cmdUnlock() *cli.Command {
 	return &cli.Command{
 		Name: "unlock",
 		Flags: []cli.Flag{
-			flagFromAddr, flagSecret, flagExpiration, flagPenaltyBPS,
-			flagUTXO, flagMinerFeeRate, flagDryRun,
+			flagWIF, flagFromAddr, flagSecret, flagExpiration, flagPenaltyBPS,
+			flagUTXO, flagMinerFeeRate, flagDryRun, flagRpcUrl,
 		},
 		Action: func(ctx *cli.Context) error {
-			_, pkh, _, err := decodeWIF(ctx.String(flagNameWIF))
+			_, pkh, addr, err := decodeWIF(ctx.String(flagNameWIF))
 			if err != nil {
 				return err
 			}
-			fromAddr, fromPkh, err := decodeAddr(ctx.String(flagNameFromAddr))
+			_, fromPkh, err := decodeAddr(ctx.String(flagNameFromAddr))
 			if err != nil {
 				return err
 			}
@@ -162,16 +174,25 @@ func cmdUnlock() *cli.Command {
 			fmt.Println("hash lock:", hex.EncodeToString(hashLock))
 			fmt.Println("htlc p2sh:", hex.EncodeToString(cP2SH))
 
-			tx, err := c.MakeReceiveTx(txid, uint32(vout), int64(val), fromAddr, minerFeeRate, secret)
+			tx, err := c.MakeReceiveTx(txid, uint32(vout), int64(val), minerFeeRate, secret)
 			if err != nil {
 				return err
 			}
 
-			if ctx.Bool(flagNameDryRun) {
-				fmt.Println("unlocking tx:", htlcbch.MsgTxToHex(tx))
+			fmt.Println("unlocking tx:", htlcbch.MsgTxToHex(tx))
+
+			rpcRrl := ctx.String(flagNameRpcUrl)
+			if ctx.Bool(flagNameDryRun) || rpcRrl == "" {
+				return nil
 			}
 
-			// TODO: broadcast tx
+			bchCli, err := bot.NewBchClient(rpcRrl, addr)
+			txHash, err := bchCli.SendTx(tx)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("tx hash:", txHash.String())
 			return nil
 		},
 	}
@@ -182,14 +203,14 @@ func cmdRefund() *cli.Command {
 		Name: "refund",
 		Flags: []cli.Flag{
 			flagWIF, flagToAddr, flagSecret, flagExpiration, flagPenaltyBPS,
-			flagUTXO, flagMinerFeeRate, flagDryRun,
+			flagUTXO, flagMinerFeeRate, flagDryRun, flagRpcUrl,
 		},
 		Action: func(ctx *cli.Context) error {
-			_, pkh, _, err := decodeWIF(ctx.String(flagNameWIF))
+			_, pkh, addr, err := decodeWIF(ctx.String(flagNameWIF))
 			if err != nil {
 				return err
 			}
-			toAddr, toPkh, err := decodeAddr(ctx.String(flagNameToAddr))
+			_, toPkh, err := decodeAddr(ctx.String(flagNameToAddr))
 			if err != nil {
 				return err
 			}
@@ -222,16 +243,25 @@ func cmdRefund() *cli.Command {
 			fmt.Println("hash lock:", hex.EncodeToString(hashLock))
 			fmt.Println("htlc p2sh:", hex.EncodeToString(cP2SH))
 
-			tx, err := c.MakeRefundTx(txid, uint32(vout), int64(val), toAddr, minerFeeRate)
+			tx, err := c.MakeRefundTx(txid, uint32(vout), int64(val), minerFeeRate)
 			if err != nil {
 				return err
 			}
 
-			if ctx.Bool(flagNameDryRun) {
-				fmt.Println("refunding tx:", htlcbch.MsgTxToHex(tx))
+			fmt.Println("unlocking tx:", htlcbch.MsgTxToHex(tx))
+
+			rpcRrl := ctx.String(flagNameRpcUrl)
+			if ctx.Bool(flagNameDryRun) || rpcRrl == "" {
+				return nil
 			}
 
-			// TODO: broadcast tx
+			bchCli, err := bot.NewBchClient(rpcRrl, addr)
+			txHash, err := bchCli.SendTx(tx)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("tx hash:", txHash.String())
 			return nil
 		},
 	}

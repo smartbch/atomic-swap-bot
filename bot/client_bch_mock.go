@@ -56,7 +56,7 @@ func (c *MockBchClient) getTxConfirmations(txHashHex string) (int64, error) {
 	return c.confirmations[txHashHex], nil
 }
 
-func (c *MockBchClient) sendTx(tx *wire.MsgTx) (*chainhash.Hash, error) {
+func (c *MockBchClient) SendTx(tx *wire.MsgTx) (*chainhash.Hash, error) {
 	txHash := tx.TxHash()
 	return &txHash, nil
 }

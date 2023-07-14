@@ -114,7 +114,6 @@ func TestMakeReceiveTx(t *testing.T) {
 		gethcmn.Hash{'u', 't', 'x', 'o'}.Bytes(),
 		1,
 		100000000,
-		testSenderAddr,
 		2,
 		testSecretKey,
 	)
@@ -138,12 +137,11 @@ func TestMakeRefundTx(t *testing.T) {
 		gethcmn.Hash{'u', 't', 'x', 'o'}.Bytes(),
 		1,
 		100000000,
-		testSenderAddr,
 		3,
 	)
 	require.NoError(t, err)
 	require.Equal(t, uint32(testExpiration), tx.TxIn[0].Sequence)
-	require.Len(t, MsgTxToBytes(tx), 297)
+	require.Len(t, MsgTxToBytes(tx), 331)
 	//require.Equal(t, "?", MsgTxToHex(tx))
 }
 
