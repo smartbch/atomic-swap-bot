@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	"golang.org/x/exp/slices"
 
@@ -133,4 +134,12 @@ func (c *BchClient) getTxConfirmations(txHashHex string) (int64, error) {
 
 func (c *BchClient) SendTx(tx *wire.MsgTx) (*chainhash.Hash, error) {
 	return c.client.SendRawTransaction(tx, false)
+}
+
+func isUtxoSpentErr(err error) bool {
+	msg := err.Error()
+
+	return strings.Contains(msg, "-26: txn-mempool-conflict") ||
+		strings.Contains(msg, "-27: transaction already in block chain") ||
+		strings.Contains(msg, "-25: Missing inputs")
 }

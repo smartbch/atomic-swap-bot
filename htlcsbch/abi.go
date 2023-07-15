@@ -264,6 +264,25 @@ const (
     {
       "inputs": [
         {
+          "internalType": "bytes32",
+          "name": "secretLock",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getSwapState",
+      "outputs": [
+        {
+          "internalType": "enum AtomicSwapEther.States",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "",
           "type": "address"
@@ -579,4 +598,9 @@ func PackClose(hashLock, secret common.Hash) ([]byte, error) {
 func PackExpire(hashLock common.Hash) ([]byte, error) {
 	// function expire(bytes32 _secretLock) public
 	return htlcAbi.Pack("expire", hashLock)
+}
+
+func PackGetSwapState(hashLock common.Hash) ([]byte, error) {
+	// function getSwapState(bytes32 secretLock) public view returns (States)
+	return htlcAbi.Pack("getSwapState", hashLock)
 }

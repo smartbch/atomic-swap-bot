@@ -45,14 +45,14 @@ BCH=>SBCH, normal flow:
                 +=====+      +============+      +================+      +==============+
                 | New | ---> | SbchLocked | ---> | SecretRevealed | ---> |  BchUnlocked |
                 +=====+      +============+      +================+      +==============+
-                                     \                                           \___________
-                                      \                                                      \
-                                 +-------------+                                       +-----------+
-                                 | bot(slave)  |                                       |    bot    |
-                                 +-------------+                                       +-----------+
-                                 |  find sBCH  |                                       | find BCH  |
-                                 |  lock log   |                                       | unlock tx |
-                                 +-------------+                                       +-----------+
+                                     \
+                                      \
+                                 +-------------+
+                                 | bot(slave)  |
+                                 +-------------+
+                                 |  find sBCH  |
+                                 |  lock log   |
+                                 +-------------+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 BCH=>SBCH, refund:
@@ -68,14 +68,14 @@ BCH=>SBCH, refund:
                 +=====+      +============+      +==============+
                 | New | ---> | SbchLocked | ---> | SbchRefunded |
                 +=====+      +============+      +==============+
-                                     \                     \
-                                      \                     \
-                                 +-------------+      +-----------+
-                                 | bot(slave)  |      |    bot    |
-                                 +-------------+      +-----------+
-                                 |  find sBCH  |      | find sBCH |
-                                 |  lock log   |      | refund tx |
-                                 +-------------+      +-----------+
+                                     \
+                                      \
+                                 +-------------+
+                                 | bot(slave)  |
+                                 +-------------+
+                                 |  find sBCH  |
+                                 |  lock log   |
+                                 +-------------+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SBCH=>BCH, normal flow:
@@ -91,14 +91,14 @@ SBCH=>BCH, normal flow:
                 +=====+      +============+      +================+      +==============+
                 | New | ---> |  BchLocked | ---> | SecretRevealed | ---> | SbchUnlocked |
                 +=====+      +============+      +================+      +==============+
-                                     \                                           \___________
-                                      \                                                      \
-                                 +-------------+                                       +-----------+
-                                 | bot(slave)  |                                       |    bot    |
-                                 +-------------+                                       +-----------+
-                                 |  find BCH   |                                       | find sBCH |
-                                 |  lock tx    |                                       | unlock log|
-                                 +-------------+                                       +-----------+
+                                     \
+                                      \
+                                 +-------------+
+                                 | bot(slave)  |
+                                 +-------------+
+                                 |  find BCH   |
+                                 |  lock tx    |
+                                 +-------------+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SBCH=>BCH, refund:
@@ -114,14 +114,14 @@ SBCH=>BCH, refund:
                 +=====+      +============+      +==============+
                 | New | ---> |  BchLocked | ---> |  BchRefunded |
                 +=====+      +============+      +==============+
-                                     \                     \
-                                      \                     \
-                                 +-------------+      +-----------+
-                                 | bot(slave)  |      |    bot    |
-                                 +-------------+      +-----------+
-                                 |  find BCH   |      | find BCH  |
-                                 |  lock tx    |      | refund tx |
-                                 +-------------+      +-----------+
+                                     \
+                                      \
+                                 +-------------+
+                                 | bot(slave)  |
+                                 +-------------+
+                                 |  find BCH   |
+                                 |  lock tx    |
+                                 +-------------+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
@@ -134,9 +134,8 @@ M: master, S: slave
 | handleBchDepositTxs     |✓|✓|                | New            |
 | handleBchUserDeposits   |✓| | New            | SbchLocked     |
 | handleSbchOpenEventB2S  | |✓| New            | SbchLocked     |
-| handleSbchCloseEventB2S |✓|✓| SbchLocked     | SecretRevealed |
+| handleSbchCloseEvent    |✓|✓| SbchLocked     | SecretRevealed |
 | unlockBchUserDeposits   |✓|✓| SecretRevealed | BchUnlocked    |
-| handleBchReceiptTxB2S   |✓|✓| SecretRevealed | BchUnlocked    |
 +-------------------------+-+-+----------------+----------------+
 +-------------------------+-+-+----------------+----------------+
 | BCH2SBCH: refund        |M|S| old status     | new status     |
@@ -145,7 +144,6 @@ M: master, S: slave
 | handleBchUserDeposits   |✓| | New            | SbchLocked     |
 | handleSbchOpenEventB2S  | |✓| New            | SbchLocked     |
 | refundLockedSbch        |✓|✓| SbchLocked     | SbchRefunded   |
-| handleSbchExpireEvent   |✓|✓| SbchLocked     | SbchRefunded   |
 +-------------------------+-+-+----------------+----------------+
 +-------------------------+-+-+----------------+----------------+
 | BCH2SBCH: too late      |M|S| old status     | new status     |
@@ -160,9 +158,8 @@ M: master, S: slave
 | handleSbchOpenEventS2B  |✓|✓|                | New            |
 | handleSbchUserDeposits  |✓| | New            | BchLocked      |
 | handleBchDepositTxS2B   | |✓| New            | BchLocked      |
-| handleBchReceiptTxS2B   |✓|✓| BchLocked      | SecretRevealed |
+| handleBchReceiptTx      |✓|✓| BchLocked      | SecretRevealed |
 | unlockSbchUserDeposits  |✓|✓| SecretRevealed | SbchUnlocked   |
-| handleSbchExpireEvent   |✓|✓| SecretRevealed | SbchUnlocked   |
 +-------------------------+-+-+----------------+----------------+
 +-------------------------+-+-+----------------+----------------+
 | SBCH2BCH: refund        |M|S| old status     | new status     |
@@ -171,7 +168,6 @@ M: master, S: slave
 | handleSbchUserDeposits  |✓| | New            | BchLocked      |
 | handleBchDepositTxS2B   | |✓| New            | BchLocked      |
 | refundLockedBCH         |✓|✓| BchLocked      | BchRefunded    |
-| handleBchRefundTxs      |✓|✓| BchLocked      | BchRefunded    |
 +-------------------------+-+-+----------------+----------------+
 +-------------------------+-+-+----------------+----------------+
 | SBCH2BCH: too late      |M|S| old status     | new status     |
@@ -386,7 +382,6 @@ func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 
 	bot.handleBchDepositTxs(uint64(h), block)
 	bot.handleBchReceiptTxs(block)
-	bot.handleBchRefundTxs(block)
 
 	err = bot.db.setLastBchHeight(uint64(h))
 	if err != nil {
@@ -486,14 +481,13 @@ func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
 	log.Info("HTLC receipts: ", len(receipts))
 	for _, receipt := range receipts {
 		log.Info("HTLC receipt:", toJSON(receipt))
-		bot.handleBchReceiptTxS2B(receipt)
-		bot.handleBchReceiptTxB2S(receipt)
+		bot.handleBchReceiptTx(receipt)
 	}
 }
 
 // for sbch2bch records, change status from BchLocked to SecretRevealed
-func (bot *MarketMakerBot) handleBchReceiptTxS2B(receipt *htlcbch.HtlcReceiptInfo) {
-	log.Info("handleBchReceiptTxS2B")
+func (bot *MarketMakerBot) handleBchReceiptTx(receipt *htlcbch.HtlcReceiptInfo) {
+	log.Info("handleBchReceiptTx")
 	record, err := bot.db.getSbch2BchRecordByBchLockTxHash(receipt.PrevTxHash)
 	if err != nil {
 		log.Error(fmt.Errorf("DB error, can not get Sbch2BchRecord, SbchLockTxHash=%s, err=%w",
@@ -520,58 +514,6 @@ func (bot *MarketMakerBot) handleBchReceiptTxS2B(receipt *htlcbch.HtlcReceiptInf
 	err = bot.db.updateSbch2BchRecord(record)
 	if err != nil {
 		log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
-	}
-}
-
-// for bch2sbch records, change status from SecretRevealed to BchUnlocked
-func (bot *MarketMakerBot) handleBchReceiptTxB2S(receipt *htlcbch.HtlcReceiptInfo) {
-	log.Info("handleBchReceiptTxB2S")
-
-	hashLock := secretToHashLock(gethcmn.FromHex(receipt.Secret))
-	record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
-	if err != nil {
-		return
-	}
-	if record.Status != Bch2SbchStatusSecretRevealed {
-		return
-	}
-	if receipt.PrevTxHash != record.BchLockTxHash {
-		log.Info("receipt.PrevTxHash != record.BchLockTxHash: ",
-			receipt.PrevTxHash, " != ", record.BchLockTxHash)
-		return
-	}
-	// TODO: add more checks
-
-	log.Info("HTLC receipt (BCH unlocked by others):", toJSON(receipt))
-	record.Status = Bch2SbchStatusBchUnlocked
-	record.BchUnlockTxHash = receipt.TxHash
-	err = bot.db.updateBch2SbchRecord(record)
-	if err != nil {
-		log.Error("failed to update status of BCH2SBCH record: ", err)
-	}
-}
-
-// find BCH refund txs
-// for sbch2bch records, change status from BchRefundable to BchRefunded
-func (bot *MarketMakerBot) handleBchRefundTxs(block *wire.MsgBlock) {
-	// TODO: add more checks
-	refunds := htlcbch.GetHtlcRefunds(block)
-	log.Info("HTLC refunds: ", len(refunds))
-	for _, refund := range refunds {
-		record, err := bot.db.getSbch2BchRecordByBchLockTxHash(refund.PrevTxHash)
-		if err != nil {
-			continue
-		}
-		if record.Status != Sbch2BchStatusBchLocked {
-			continue
-		}
-
-		record.Status = Sbch2BchStatusBchRefunded
-		record.BchUnlockTxHash = refund.TxHash
-		err = bot.db.updateSbch2BchRecord(record)
-		if err != nil {
-			log.Error("failed to update status of SBCH2BCH record: ", err)
-		}
 	}
 }
 
@@ -624,10 +566,7 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 			bot.handleSbchOpenEventS2B(ethLog)
 			bot.handleSbchOpenEventB2S(ethLog)
 		case htlcsbch.CloseEventId:
-			bot.handleSbchCloseEventB2S(ethLog)
-			bot.handleSbchCloseEventS2B(ethLog)
-		case htlcsbch.ExpireEventId:
-			bot.handleSbchExpireEvent(ethLog)
+			bot.handleSbchCloseEvent(ethLog)
 		}
 	}
 
@@ -755,7 +694,7 @@ func (bot *MarketMakerBot) handleSbchOpenEventB2S(ethLog gethtypes.Log) {
 }
 
 // bch2sbch records: SbchLocked => SecretRevealed
-func (bot *MarketMakerBot) handleSbchCloseEventB2S(ethLog gethtypes.Log) {
+func (bot *MarketMakerBot) handleSbchCloseEvent(ethLog gethtypes.Log) {
 	closeLog := htlcsbch.ParseHtlcCloseLog(ethLog)
 	if closeLog == nil {
 		return
@@ -786,59 +725,6 @@ func (bot *MarketMakerBot) handleSbchCloseEventB2S(ethLog gethtypes.Log) {
 	record.Secret = toHex(closeLog.Secret[:])
 	record.SbchUnlockTxHash = toHex(closeLog.TxHash[:])
 	record.Status = Bch2SbchStatusSecretRevealed
-	err = bot.db.updateBch2SbchRecord(record)
-	if err != nil {
-		log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
-		return
-	}
-}
-
-// sbch2bch record: SecretRevealed => SbchUnlocked
-func (bot *MarketMakerBot) handleSbchCloseEventS2B(ethLog gethtypes.Log) {
-	closeLog := htlcsbch.ParseHtlcCloseLog(ethLog)
-	if closeLog == nil {
-		return
-	}
-
-	hashLock := toHex(closeLog.HashLock[:])
-	record, err := bot.db.getSbch2BchRecordByHashLock(hashLock)
-	if err != nil {
-		return
-	}
-	if record.Status != Sbch2BchStatusSecretRevealed {
-		return
-	}
-
-	record.Secret = toHex(closeLog.Secret[:])
-	record.SbchUnlockTxHash = toHex(closeLog.TxHash[:])
-	record.Status = Sbch2BchStatusSbchUnlocked
-	err = bot.db.updateSbch2BchRecord(record)
-	if err != nil {
-		log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
-		return
-	}
-}
-
-// bch2sbch record: SbchLocked => SbchRefunded
-func (bot *MarketMakerBot) handleSbchExpireEvent(ethLog gethtypes.Log) {
-	expireLog := htlcsbch.ParseHtlcExpireLog(ethLog)
-	if expireLog == nil {
-		return
-	}
-
-	hashLock := toHex(expireLog.HashLock[:])
-	record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
-	if err != nil {
-		return
-	}
-	if record.Status != Bch2SbchStatusSbchLocked {
-		return
-	}
-
-	log.Info("got sBCH expire log: ", toJSON(expireLog))
-	log.Info("db record: ", toJSON(record))
-	record.Status = Bch2SbchStatusSbchRefunded
-	record.SbchRefundTxHash = toHex(expireLog.TxHash[:])
 	err = bot.db.updateBch2SbchRecord(record)
 	if err != nil {
 		log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
@@ -1066,19 +952,27 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 			gethcmn.FromHex(record.Secret),
 		)
 		if err != nil {
-			log.Error("failed to create BCH tx: ", err)
+			log.Error("failed to create unlock tx: ", err)
 			continue
 		}
 		log.Info("tx: ", htlcbch.MsgTxToHex(tx))
+
+		txHashStr := "?"
 		txHash, err := bot.bchCli.SendTx(tx)
-		if err != nil {
-			log.Error("failed to send BCH tx: ", err)
-			continue
+		if err == nil {
+			log.Info("unlock tx sent, hash: ", txHash.String())
+			txHashStr = txHash.String()
+		} else {
+			log.Error("failed to send unlock tx: ", err)
+			if isUtxoSpentErr(err) {
+				log.Info("UTXO is spent by others")
+			} else {
+				continue
+			}
 		}
-		log.Info("tx hash: ", txHash.String())
 
 		record.Status = Bch2SbchStatusBchUnlocked
-		record.BchUnlockTxHash = txHash.String()
+		record.BchUnlockTxHash = txHashStr
 		err = bot.db.updateBch2SbchRecord(record)
 		if err != nil {
 			log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
@@ -1107,12 +1001,18 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 			}
 		}
 
-		txHash, err := bot.sbchCli.unlockSbchFromHtlc(
-			gethcmn.HexToHash(record.HashLock),
-			gethcmn.HexToHash(record.Secret))
+		hashLock := gethcmn.HexToHash(record.HashLock)
+		secret := gethcmn.HexToHash(record.Secret)
+		txHash, err := bot.sbchCli.unlockSbchFromHtlc(hashLock, secret)
 		if err != nil {
 			log.Error("RPC error, failed to unlock sBCH: ", err)
-			continue
+
+			state, _ := bot.sbchCli.getSwapState(hashLock)
+			if state == SwapClosed {
+				log.Info("swap is closed")
+			} else {
+				continue
+			}
 		}
 
 		record.Status = Sbch2BchStatusSbchUnlocked
@@ -1186,17 +1086,24 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 			log.Error("failed to make refund tx: ", err)
 			continue
 		}
-
 		log.Info("refund tx: ", htlcbch.MsgTxToHex(tx))
+
+		txHashStr := "?"
 		txHash, err := bot.bchCli.SendTx(tx)
-		if err != nil {
+		if err == nil {
+			log.Info("refund tx sent, hash: ", txHash.String())
+			txHashStr = txHash.String()
+		} else {
 			log.Error("failed to send refund tx: ", err)
-			continue
+			if isUtxoSpentErr(err) {
+				log.Info("UTXO is spent by others")
+			} else {
+				continue
+			}
 		}
 
-		log.Info("refund tx sent, hash: ", txHash.String())
 		record.Status = Sbch2BchStatusBchRefunded
-		record.BchRefundTxHash = txHash.String()
+		record.BchRefundTxHash = txHashStr
 		err = bot.db.updateSbch2BchRecord(record)
 		if err != nil {
 			log.Error("DB error, failed to save SBCH2BCH record: ", err)
@@ -1258,7 +1165,13 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 		txHash, err := bot.sbchCli.refundSbchFromHtlc(hashLock)
 		if err != nil {
 			log.Error("RPC error, failed to refund sBCH: ", err)
-			continue
+
+			state, _ := bot.sbchCli.getSwapState(hashLock)
+			if state == SwapExpired {
+				log.Info("swap is refunded")
+			} else {
+				continue
+			}
 		}
 
 		record.Status = Bch2SbchStatusSbchRefunded

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gcash/bchd/txscript"
@@ -32,11 +31,6 @@ type HtlcReceiptInfo struct {
 	PrevTxHash string // 32 bytes, hex
 	TxHash     string // 32 bytes, hex
 	Secret     string // 32 bytes, hex
-}
-
-type HtlcRefundInfo struct {
-	PrevTxHash string // 32 bytes, hex
-	TxHash     string // 32 bytes, hex
 }
 
 // === Deposit ===
@@ -191,64 +185,4 @@ func getHtlcReceiptInfo(sigScript []byte) *HtlcReceiptInfo {
 	//hashLock := constructorArgs[0]
 	//recipientPkh := constructorArgs[0]
 	//senderPkh := constructorArgs[0]
-}
-
-// === Refund ===
-
-func GetHtlcRefunds(block *wire.MsgBlock) (refunds []*HtlcRefundInfo) {
-	for _, tx := range block.Transactions {
-		refundInfo := isHtlcRefundTx(tx)
-		if refundInfo != nil {
-			refunds = append(refunds, refundInfo)
-		}
-	}
-	return
-}
-
-func isHtlcRefundTx(tx *wire.MsgTx) *HtlcRefundInfo {
-	if len(tx.TxIn) != 1 && len(tx.TxIn) != 2 {
-		return nil
-	}
-	sigScript := tx.TxIn[0].SignatureScript
-	refundInfo := getHtlcRefundInfo(sigScript)
-	if refundInfo != nil {
-		refundInfo.PrevTxHash = tx.TxIn[0].PreviousOutPoint.Hash.String()
-		refundInfo.TxHash = tx.TxHash().String()
-	}
-	return refundInfo
-}
-
-func getHtlcRefundInfo(sigScript []byte) *HtlcRefundInfo {
-	if !bytes.HasSuffix(sigScript, redeemScriptWithoutConstructorArgs) {
-		return nil
-	}
-
-	// OP_1 is ignored
-	//pushes, err := txscript.PushedData(sigScript)
-	//if err != nil {
-	//	return nil
-	//}
-	//if len(pushes) != 1 {
-	//	return nil
-	//}
-	//if len(pushes[0]) != 32 {
-	//	return nil
-	//}
-
-	disAsm, err := txscript.DisasmString(sigScript)
-	if err != nil {
-		return nil
-	}
-
-	opcodes := strings.Split(disAsm, " ")
-	if len(opcodes) != 2 ||
-		opcodes[0] != "1" {
-		return nil
-	}
-
-	return &HtlcRefundInfo{}
-
-	// TODO: more checks
-	//sel := pushes[0]
-	//redeemScript := pushes[1]
 }

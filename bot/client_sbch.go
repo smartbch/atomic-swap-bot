@@ -21,6 +21,13 @@ const (
 	getReceiptWaitTime   = 2 * time.Second
 )
 
+const (
+	SwapInvalid = iota
+	SwapOpen
+	SwapClosed
+	SwapExpired
+)
+
 var _ ISbchClient = (*SbchClient)(nil)
 
 type ISbchClient interface {
@@ -31,6 +38,7 @@ type ISbchClient interface {
 	lockSbchToHtlc(userEvmAddr common.Address, hashLock common.Hash, timeLock uint32, amt *big.Int) (*common.Hash, error)
 	unlockSbchFromHtlc(hashLock common.Hash, secret common.Hash) (*common.Hash, error)
 	refundSbchFromHtlc(hashLock common.Hash) (*common.Hash, error)
+	getSwapState(hashLock common.Hash) (uint8, error)
 }
 
 type SbchClient struct {
@@ -111,6 +119,30 @@ func (c *SbchClient) getHtlcLogs(fromBlock, toBlock uint64) ([]types.Log, error)
 		ToBlock:   big.NewInt(int64(toBlock)),
 		Addresses: []common.Address{c.htlcAddr},
 	})
+}
+
+func (c *SbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
+	callData, err := htlcsbch.PackGetSwapState(hashLock)
+	if err != nil {
+		return 0, err
+	}
+
+	msg := ethereum.CallMsg{
+		From: c.botAddr,
+		To:   &c.htlcAddr,
+		Gas:  c.openGasLimit,
+		Data: callData,
+	}
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), c.timeout)
+	defer cancelFn()
+	result, err := c.client.CallContract(ctx, msg, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	// TODO: unpack result
+	return result[0], nil
 }
 
 // call open()

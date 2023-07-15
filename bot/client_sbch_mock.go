@@ -75,3 +75,7 @@ func (c *MockSbchClient) refundSbchFromHtlc(
 	txHash := common.BytesToHash(reverseBytes(hashLock[:]))
 	return &txHash, nil
 }
+
+func (c *MockSbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
+	panic("not implemented")
+}

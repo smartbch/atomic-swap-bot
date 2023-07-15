@@ -57,3 +57,12 @@ func TestPackExpire(t *testing.T) {
 686173686c6f636baa0000000000000000000000000000000000000000000000
 `, "\n", ""), hex.EncodeToString(data))
 }
+
+func TestPackGetSwapState(t *testing.T) {
+	hashLock := common.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k', 0xaa}
+	data, err := PackGetSwapState(hashLock)
+	require.NoError(t, err)
+	require.Equal(t, strings.ReplaceAll(`db9b6d06
+686173686c6f636baa0000000000000000000000000000000000000000000000
+`, "\n", ""), hex.EncodeToString(data))
+}
