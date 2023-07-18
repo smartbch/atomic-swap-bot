@@ -21,6 +21,8 @@ var (
 	dbFile            = "bot.db"
 	bchPrivKeyWIF     = "" // only used for test
 	sbchPrivKeyHex    = "" // only used for test
+	bchMasterAddr     = "" // only in slave mode
+	sbchMasterAddr    = "" // only in slave mode
 	bchRpcUrl         = "https://user:pass@localhost:8333"
 	sbchRpcUrl        = "https://localhost:8545"
 	sbchHtlcAddr      = "0x"
@@ -38,12 +40,15 @@ var (
 	sbchExpireGas     = uint64(500_000)
 	bchConfirmations  = uint64(10)
 	debugMode         = true
+	slaveMode         = false
 )
 
 func main() {
 	flag.StringVar(&dbFile, "db-file", dbFile, "sqlite3 database file")
 	flag.StringVar(&bchPrivKeyWIF, "bch-key", bchPrivKeyWIF, "BCH private key (WIF, only used for test)")
 	flag.StringVar(&sbchPrivKeyHex, "sbch-key", sbchPrivKeyHex, "sBCH private key (hex, only used for test)")
+	flag.StringVar(&bchMasterAddr, "bch-master-addr", bchMasterAddr, "BCH master address (only in slave mode)")
+	flag.StringVar(&sbchMasterAddr, "sbch-master-addr", sbchMasterAddr, "SBCH master address (only in slave mode)")
 	flag.StringVar(&bchRpcUrl, "bch-rpc-url", bchRpcUrl, "BCH RPC URL")
 	flag.StringVar(&sbchRpcUrl, "sbch-rpc-url", sbchRpcUrl, "sBCH RPC URL")
 	flag.StringVar(&sbchHtlcAddr, "sbch-htlc-addr", sbchHtlcAddr, "sBCH HTLC contract address")
@@ -61,6 +66,7 @@ func main() {
 	flag.Uint64Var(&sbchCloseGas, "sbch-close-gas", sbchCloseGas, "gas limit of sBCH HTLC close tx")
 	flag.Uint64Var(&sbchExpireGas, "sbch-expire-gas", sbchExpireGas, "gas limit of sBCH HTLC expire tx")
 	flag.BoolVar(&debugMode, "debug", debugMode, "debug mode")
+	flag.BoolVar(&slaveMode, "slave", slaveMode, "slave mode")
 	flag.Parse()
 
 	if bchPrivKeyWIF == "" || sbchPrivKeyHex == "" || !debugMode {
@@ -71,6 +77,7 @@ func main() {
 	_sbchGasPrice := big.NewInt(int64(sbchGasPrice * 1e9))
 
 	_bot, err := bot.NewBot(dbFile, bchPrivKeyWIF, sbchPrivKeyHex,
+		bchMasterAddr, sbchMasterAddr,
 		bchRpcUrl, sbchRpcUrl, _sbchHtlcAddr, _sbchGasPrice,
 		uint16(bchTimeLock), uint16(penaltyRatio), uint16(feeRatio),
 		uint64(math.Round(minSwapVal*1e8)), uint64(math.Round(maxSwapVal*1e8)),
@@ -78,6 +85,7 @@ func main() {
 		bchSendFeeRate, bchReceiveFeeRate, bchRefundFeeRate,
 		sbchOpenGas, sbchCloseGas, sbchExpireGas,
 		debugMode,
+		slaveMode,
 	)
 	if err != nil {
 		log.Fatal(err)

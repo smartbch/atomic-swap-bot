@@ -205,16 +205,13 @@ type MarketMakerBot struct {
 	bchSendMinerFeeRate    uint64 // sats/byte
 	bchReceiveMinerFeeRate uint64 // sats/byte
 	bchRefundMinerFeeRate  uint64 // sats/byte
-
-	// slave info
-	isSlaveMode      bool
-	slaveBchPrivKey  *bchec.PrivateKey
-	slaveSbchPrivKey *ecdsa.PrivateKey
+	isSlaveMode            bool
 }
 
 func NewBot(
 	dbFile string,
-	bchPrivKeyWIF, sbchPrivKeyHex string,
+	bchPrivKeyWIF, sbchPrivKeyHex string, // master mode
+	bchMasterAddr, sbchMasterAddr string, // slave mode
 	bchRpcUrl, sbchRpcUrl string,
 	sbchHtlcAddr gethcmn.Address,
 	sbchGasPrice *big.Int,
@@ -226,27 +223,21 @@ func NewBot(
 	bchSendMinerFeeRate, bchReceiveMinerFeeRate, bchRefundMinerFeeRate uint64,
 	sbchOpenGasLimit, sbchCloseGasLimit, sbchExpireGasLimit uint64,
 	debugMode bool,
+	slaveMode bool,
 ) (*MarketMakerBot, error) {
 
 	// load BCH key
-	wif, err := bchutil.DecodeWIF(bchPrivKeyWIF)
+	bchPrivKey, bchPbk, bchPkh, bchAddr, err := loadBchKey(
+		bchPrivKeyWIF, bchMasterAddr, debugMode, slaveMode)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load sBCH private key: %w", err)
-	}
-	bchPrivKey := wif.PrivKey
-	bchPbk := bchPrivKey.PubKey().SerializeCompressed()
-	bchPkh := bchutil.Hash160(bchPbk)
-	bchAddr, err := bchutil.NewAddressPubKeyHash(bchPkh, getBchParams(debugMode))
-	if err != nil {
-		return nil, fmt.Errorf("failed to derive BCH recipient address")
+		return nil, fmt.Errorf("failed to load BCH private key: %w", err)
 	}
 
 	// load sBCH key
-	sbchPrivKey, err := gethcrypto.HexToECDSA(sbchPrivKeyHex)
+	sbchPrivKey, sbchAddr, err := loadSbchKey(sbchPrivKeyHex, sbchMasterAddr, slaveMode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load sBCH private key: %w", err)
 	}
-	sbchAddr := gethcrypto.PubkeyToAddress(sbchPrivKey.PublicKey)
 
 	// create RPC clients
 	bchCli, err := NewBchClient(bchRpcUrl, bchAddr)
@@ -292,7 +283,83 @@ func NewBot(
 		bchReceiveMinerFeeRate: bchReceiveMinerFeeRate,
 		bchRefundMinerFeeRate:  bchRefundMinerFeeRate,
 		bchConfirmations:       bchConfirmations,
+		isSlaveMode:            slaveMode,
 	}, nil
+}
+
+func loadBchKey(privKeyWIF, masterAddr string, debugMode, slaveMode bool,
+) (privKey *bchec.PrivateKey, pubKey, pkh []byte, addr *bchutil.AddressPubKeyHash, err error) {
+
+	params := getBchParams(debugMode)
+	if !slaveMode {
+		// master mode
+
+		var wif *bchutil.WIF
+		wif, err = bchutil.DecodeWIF(privKeyWIF)
+		if err != nil {
+			err = fmt.Errorf("failed to decode WIF: %w", err)
+			return
+		}
+
+		privKey = wif.PrivKey
+		pubKey = privKey.PubKey().SerializeCompressed()
+		pkh = bchutil.Hash160(pubKey)
+		addr, err = bchutil.NewAddressPubKeyHash(pkh, params)
+		err = fmt.Errorf("failed to derive BCH address: %w", err)
+		return
+	}
+
+	// slave mode
+
+	if masterAddr == "" {
+		err = fmt.Errorf("missing bchMasterAddr")
+		return
+	}
+
+	_addr, _err := bchutil.DecodeAddress(masterAddr, params)
+	if _err != nil {
+		err = fmt.Errorf("failed to decode master address: %w", _err)
+		return
+	}
+
+	ok := false
+	addr, ok = _addr.(*bchutil.AddressPubKeyHash)
+	if !ok {
+		err = fmt.Errorf("failed to cast master address")
+		return
+	}
+
+	pkh = addr.Hash160()[:]
+
+	privKey = nil
+	pubKey = nil
+	return
+}
+
+func loadSbchKey(privKeyHex, masterAddr string, slaveMode bool,
+) (privKey *ecdsa.PrivateKey, addr gethcmn.Address, err error) {
+
+	privKey, err = gethcrypto.HexToECDSA(privKeyHex)
+	if err != nil {
+		err = fmt.Errorf("failed to load sBCH private key: %w", err)
+		return
+	}
+
+	if !slaveMode {
+		// master mode
+		addr = gethcrypto.PubkeyToAddress(privKey.PublicKey)
+		return
+	}
+
+	// slave mode
+
+	if masterAddr == "" {
+		err = fmt.Errorf("missing sbchMasterAddr")
+		return
+	}
+
+	addr = gethcmn.HexToAddress(masterAddr)
+	return
 }
 
 func getBchParams(debugMode bool) *chaincfg.Params {
