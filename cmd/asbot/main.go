@@ -25,15 +25,14 @@ var (
 	sbchRpcUrl        = "https://localhost:8545"
 	sbchHtlcAddr      = "0x"
 	sbchGasPrice      = 1.05
-	bchTimeLock       = uint64(12 * 6)    // 12h
-	sbchTimeLock      = uint64(12 * 3600) // 12h
-	penaltyRatio      = uint64(500)       // 5%
-	feeRatio          = uint64(100)       // 1%
-	minSwapVal        = 0.0               // in BCH
-	maxSwapVal        = 5.0               // in BCH
-	bchSendFeeRate    = uint64(2)         // sats/byte
-	bchReceiveFeeRate = uint64(2)         // sats/byte
-	bchRefundFeeRate  = uint64(2)         // sats/byte
+	bchTimeLock       = uint64(12 * 6) // 12h
+	penaltyRatio      = uint64(500)    // 5%
+	feeRatio          = uint64(100)    // 1%
+	minSwapVal        = 0.0            // in BCH
+	maxSwapVal        = 5.0            // in BCH
+	bchSendFeeRate    = uint64(2)      // sats/byte
+	bchReceiveFeeRate = uint64(2)      // sats/byte
+	bchRefundFeeRate  = uint64(2)      // sats/byte
 	sbchOpenGas       = uint64(500_000)
 	sbchCloseGas      = uint64(500_000)
 	sbchExpireGas     = uint64(500_000)
@@ -50,7 +49,6 @@ func main() {
 	flag.StringVar(&sbchHtlcAddr, "sbch-htlc-addr", sbchHtlcAddr, "sBCH HTLC contract address")
 	flag.Float64Var(&sbchGasPrice, "sbch-gas-price", sbchGasPrice, "sBCH gas price (in Gwei)")
 	flag.Uint64Var(&bchTimeLock, "bch-timelock", bchTimeLock, "BCH HTLC time-lock (in blocks)")
-	flag.Uint64Var(&sbchTimeLock, "sbch-timelock", sbchTimeLock, "sBCH HTLC time-lock (in seconds)")
 	flag.Uint64Var(&penaltyRatio, "penalty-ratio", penaltyRatio, "penalty ratio of HTLC refund (in BPS)")
 	flag.Uint64Var(&feeRatio, "fee-ratio", feeRatio, "service fee ratio (in BPS)")
 	flag.Float64Var(&minSwapVal, "min-swap-val", minSwapVal, "min swap value (in BCH)")
@@ -74,7 +72,7 @@ func main() {
 
 	_bot, err := bot.NewBot(dbFile, bchPrivKeyWIF, sbchPrivKeyHex,
 		bchRpcUrl, sbchRpcUrl, _sbchHtlcAddr, _sbchGasPrice,
-		uint16(bchTimeLock), uint32(sbchTimeLock), uint16(penaltyRatio), uint16(feeRatio),
+		uint16(bchTimeLock), uint16(penaltyRatio), uint16(feeRatio),
 		uint64(math.Round(minSwapVal*1e8)), uint64(math.Round(maxSwapVal*1e8)),
 		uint8(bchConfirmations),
 		bchSendFeeRate, bchReceiveFeeRate, bchRefundFeeRate,

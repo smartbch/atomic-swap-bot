@@ -131,7 +131,7 @@ M: master, S: slave
 +-------------------------+-+-+----------------+----------------+
 | BCH2SBCH: normal        |M|S| old status     | new status     |
 +-------------------------+-+-+----------------+----------------+
-| handleBchDepositTxs     |✓|✓|                | New            |
+| handleBchDepositTxB2S   |✓|✓|                | New            |
 | handleBchUserDeposits   |✓| | New            | SbchLocked     |
 | handleSbchOpenEventB2S  | |✓| New            | SbchLocked     |
 | handleSbchCloseEvent    |✓|✓| SbchLocked     | SecretRevealed |
@@ -140,7 +140,7 @@ M: master, S: slave
 +-------------------------+-+-+----------------+----------------+
 | BCH2SBCH: refund        |M|S| old status     | new status     |
 +-------------------------+-+-+----------------+----------------+
-| handleBchDepositTxs     |✓|✓|                | New            |
+| handleBchDepositTxB2S   |✓|✓|                | New            |
 | handleBchUserDeposits   |✓| | New            | SbchLocked     |
 | handleSbchOpenEventB2S  | |✓| New            | SbchLocked     |
 | refundLockedSbch        |✓|✓| SbchLocked     | SbchRefunded   |
@@ -148,7 +148,7 @@ M: master, S: slave
 +-------------------------+-+-+----------------+----------------+
 | BCH2SBCH: too late      |M|S| old status     | new status     |
 +-------------------------+-+-+----------------+----------------+
-| handleBchDepositTxs     |✓|✓|                | New            |
+| handleBchDepositTxB2S   |✓|✓|                | New            |
 | handleBchUserDeposits   |✓| | New            | TooLate        |
 +-------------------------+-+-+----------------+----------------+
 
@@ -219,7 +219,6 @@ func NewBot(
 	sbchHtlcAddr gethcmn.Address,
 	sbchGasPrice *big.Int,
 	bchTimeLock uint16,
-	sbchTimeLock uint32,
 	penaltyRatio uint16,
 	feeRatio uint16,
 	minSwapVal, maxSwapVal uint64,
@@ -271,6 +270,8 @@ func NewBot(
 	log.Info("BCH PKH     : ", "0x"+hex.EncodeToString(bchPkh))
 	log.Info("BCH address : ", bchAddr.String())
 	log.Info("sBCH address: ", sbchAddr.String())
+
+	sbchTimeLock := uint32(bchTimeLock) * 10 * 60
 
 	return &MarketMakerBot{
 		db:                     db,

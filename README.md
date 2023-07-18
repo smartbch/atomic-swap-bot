@@ -76,7 +76,6 @@ HARDHAT_NETWORK=sbch_testnet node ./scripts/htlc.js register-bot \
 	--intro=TestBot \
 	--pkh=0x104f3f29055f1b2b6debeb6e69a6f0d534f01585 \
 	--bch-lock-time=6 \
-	--sbch-lock-time=3600 \
 	--penalty-bps=500 \
 	--fee-bps=100 \
 	--min-swap-amt=0.01 \
@@ -102,7 +101,6 @@ go run github.com/smartbch/atomic-swap-bot/cmd/asbot \
 	--sbch-htlc-addr=0x3246D84c930794cDFAABBab954BAc58A7c08b4cd \
 	--sbch-gas-price=1.05 \
 	--bch-timelock=6 \
-	--sbch-timelock=3600 \
 	--penalty-ratio=500 \
 	--fee-ratio=100 \
 	--min-swap-val=0.01 \
@@ -134,7 +132,6 @@ ego run asbot \
 	--sbch-htlc-addr=0x3246D84c930794cDFAABBab954BAc58A7c08b4cd \
 	--sbch-gas-price=1.05 \
 	--bch-timelock=6 \
-	--sbch-timelock=3600 \
 	--penalty-ratio=500 \
 	--fee-ratio=100 \
 	--min-swap-val=0.01 \
