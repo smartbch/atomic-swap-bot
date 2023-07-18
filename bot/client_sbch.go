@@ -141,8 +141,7 @@ func (c *SbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
 		return 0, err
 	}
 
-	// TODO: unpack result
-	return result[0], nil
+	return htlcsbch.UnpackGetSwapState(result)
 }
 
 // call open()

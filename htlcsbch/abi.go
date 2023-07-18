@@ -1,6 +1,7 @@
 package htlcsbch
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -410,11 +411,6 @@ const (
           "type": "uint16"
         },
         {
-          "internalType": "uint32",
-          "name": "_sbchLockTime",
-          "type": "uint32"
-        },
-        {
           "internalType": "uint16",
           "name": "_penaltyBPS",
           "type": "uint16"
@@ -603,4 +599,19 @@ func PackExpire(hashLock common.Hash) ([]byte, error) {
 func PackGetSwapState(hashLock common.Hash) ([]byte, error) {
 	// function getSwapState(bytes32 secretLock) public view returns (States)
 	return htlcAbi.Pack("getSwapState", hashLock)
+}
+
+func UnpackGetSwapState(data []byte) (uint8, error) {
+	result, err := htlcAbi.Unpack("getSwapState", data)
+	if err != nil {
+		return 0, err
+	}
+	if len(result) != 1 {
+		return 0, fmt.Errorf("no or too many results: %d", len(result))
+	}
+	n, ok := result[0].(uint8)
+	if !ok {
+		return 0, fmt.Errorf("failed to cast result to uint8")
+	}
+	return n, nil
 }

@@ -66,3 +66,10 @@ func TestPackGetSwapState(t *testing.T) {
 686173686c6f636baa0000000000000000000000000000000000000000000000
 `, "\n", ""), hex.EncodeToString(data))
 }
+
+func TestUnpackGetSwapState(t *testing.T) {
+	data := common.FromHex("0x0000000000000000000000000000000000000000000000000000000000000003")
+	n, err := UnpackGetSwapState(data)
+	require.NoError(t, err)
+	require.Equal(t, uint8(3), n)
+}
