@@ -2,9 +2,9 @@ package bot
 
 import (
 	"fmt"
-
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type (
@@ -75,6 +75,53 @@ type Sbch2BchRecord struct {
 	BchRefundTxHash  string         ``                // set when status changed to Sbch2BchStatusBchRefunded
 	Status           Sbch2BchStatus `gorm:"not null"` //
 }
+
+func (record *Bch2SbchRecord) UpdateStatusToSbchLocked(sbchLockTxHash string, sbchLockTxTime uint64) *Bch2SbchRecord {
+	record.Status = Bch2SbchStatusSbchLocked
+	record.SbchLockTxHash = sbchLockTxHash
+	record.SbchLockTxTime = sbchLockTxTime
+	return record
+}
+func (record *Bch2SbchRecord) UpdateStatusToSecretRevealed(secret, sbchUnlockTxHash string) *Bch2SbchRecord {
+	record.Status = Bch2SbchStatusSecretRevealed
+	record.Secret = secret
+	record.SbchUnlockTxHash = sbchUnlockTxHash
+	return record
+}
+func (record *Bch2SbchRecord) UpdateStatusToBchUnlocked(bchUnlockTxHash string) *Bch2SbchRecord {
+	record.Status = Bch2SbchStatusBchUnlocked
+	record.BchUnlockTxHash = bchUnlockTxHash
+	return record
+}
+func (record *Bch2SbchRecord) UpdateStatusToSbchRefunded(sbchRefundTxHash string) *Bch2SbchRecord {
+	record.Status = Bch2SbchStatusSbchRefunded
+	record.SbchRefundTxHash = sbchRefundTxHash
+	return record
+}
+
+func (record *Sbch2BchRecord) UpdateStatusToBchLocked(bchLockTxHash string) *Sbch2BchRecord {
+	record.Status = Sbch2BchStatusBchLocked
+	record.BchLockTxHash = bchLockTxHash
+	return record
+}
+func (record *Sbch2BchRecord) UpdateStatusToSecretRevealed(secret, bchUnlockTxHash string) *Sbch2BchRecord {
+	record.Status = Sbch2BchStatusSecretRevealed
+	record.Secret = secret
+	record.BchUnlockTxHash = bchUnlockTxHash
+	return record
+}
+func (record *Sbch2BchRecord) UpdateStatusToSbchUnlocked(sbchUnlockTxHash string) *Sbch2BchRecord {
+	record.Status = Sbch2BchStatusSbchUnlocked
+	record.SbchUnlockTxHash = sbchUnlockTxHash
+	return record
+}
+func (record *Sbch2BchRecord) UpdateStatusToBchRefunded(bchRefundTxHash string) *Sbch2BchRecord {
+	record.Status = Sbch2BchStatusBchRefunded
+	record.BchRefundTxHash = bchRefundTxHash
+	return record
+}
+
+// ========== DB ==========
 
 type DB struct {
 	db *gorm.DB
@@ -175,13 +222,19 @@ func (db DB) addSbch2BchRecord(record *Sbch2BchRecord) error {
 }
 
 func (db DB) getBch2SbchRecordsByStatus(status Bch2SbchStatus, limit int) (records []*Bch2SbchRecord, err error) {
-	result := db.db.Where("status = ?", status).Limit(limit).Find(&records)
+	result := db.db.Where("status = ?", status).
+		Order(clause.OrderByColumn{Column: clause.Column{Name: "updated_at"}, Desc: false}).
+		Limit(limit).
+		Find(&records)
 	err = result.Error
 	return
 }
 
 func (db DB) getSbch2BchRecordsByStatus(status Sbch2BchStatus, limit int) (records []*Sbch2BchRecord, err error) {
-	result := db.db.Where("status = ?", status).Limit(limit).Find(&records)
+	result := db.db.Where("status = ?", status).
+		Order(clause.OrderByColumn{Column: clause.Column{Name: "updated_at"}, Desc: false}).
+		Limit(limit).
+		Find(&records)
 	err = result.Error
 	return
 }
