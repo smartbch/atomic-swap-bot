@@ -258,7 +258,7 @@ func NewBot(
 		return nil, fmt.Errorf("failed to query bot info: %w", err)
 	}
 
-	if bytes.Equal(bchPkh, botInfo.BchPkh[:]) {
+	if !bytes.Equal(bchPkh, botInfo.BchPkh[:]) {
 		return nil, fmt.Errorf("BCH PKH mismatch: %s != %s",
 			toHex(bchPkh), toHex(botInfo.BchPkh[:]))
 	}
