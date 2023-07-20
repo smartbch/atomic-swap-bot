@@ -41,6 +41,7 @@ var (
 	bchConfirmations  = uint64(10)
 	debugMode         = true
 	slaveMode         = false
+	lazyMaster        = false
 )
 
 func main() {
@@ -67,6 +68,7 @@ func main() {
 	flag.Uint64Var(&sbchExpireGas, "sbch-expire-gas", sbchExpireGas, "gas limit of sBCH HTLC expire tx")
 	flag.BoolVar(&debugMode, "debug", debugMode, "debug mode")
 	flag.BoolVar(&slaveMode, "slave", slaveMode, "slave mode")
+	flag.BoolVar(&lazyMaster, "lazy-master", lazyMaster, "delay to send unlock|refund tx (debug mode only)")
 	flag.Parse()
 
 	if bchPrivKeyWIF == "" || sbchPrivKeyHex == "" || !debugMode {
@@ -84,8 +86,7 @@ func main() {
 		uint8(bchConfirmations),
 		bchSendFeeRate, bchReceiveFeeRate, bchRefundFeeRate,
 		sbchOpenGas, sbchCloseGas, sbchExpireGas,
-		debugMode,
-		slaveMode,
+		debugMode, slaveMode, lazyMaster,
 	)
 	if err != nil {
 		log.Fatal(err)

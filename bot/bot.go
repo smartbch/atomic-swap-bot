@@ -178,6 +178,11 @@ M: master, S: slave
 
 */
 
+const (
+	slaveDelayBchBlocks = 1
+	slaveDelaySeconds   = 600 // 10m
+)
+
 type MarketMakerBot struct {
 	db      DB
 	bchCli  IBchClient
@@ -206,6 +211,7 @@ type MarketMakerBot struct {
 	bchReceiveMinerFeeRate uint64 // sats/byte
 	bchRefundMinerFeeRate  uint64 // sats/byte
 	isSlaveMode            bool
+	lazyMaster             bool // debug only
 }
 
 func NewBot(
@@ -224,6 +230,7 @@ func NewBot(
 	sbchOpenGasLimit, sbchCloseGasLimit, sbchExpireGasLimit uint64,
 	debugMode bool,
 	slaveMode bool,
+	lazyMaster bool, // debug only
 ) (*MarketMakerBot, error) {
 
 	// load BCH key
@@ -284,6 +291,7 @@ func NewBot(
 		bchRefundMinerFeeRate:  bchRefundMinerFeeRate,
 		bchConfirmations:       bchConfirmations,
 		isSlaveMode:            slaveMode,
+		lazyMaster:             debugMode && lazyMaster,
 	}, nil
 }
 
@@ -983,9 +991,15 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 	for _, record := range records {
 		log.Info("record: ", toJSON(record))
 		if bot.isSlaveMode {
-			if now.Sub(record.UpdatedAt).Minutes() < 10 {
+			if now.Sub(record.UpdatedAt).Seconds() < slaveDelaySeconds {
 				// give master some time to handle it
 				log.Info("wait master")
+				continue
+			}
+		} else if bot.lazyMaster {
+			if now.Sub(record.UpdatedAt).Seconds() < slaveDelaySeconds*2 {
+				// give slave some time to handle it
+				log.Info("wait slave")
 				continue
 			}
 		}
@@ -1053,9 +1067,15 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 	for _, record := range records {
 		log.Info("SBCH2BCH record: ", toJSON(record))
 		if bot.isSlaveMode {
-			if now.Sub(record.UpdatedAt).Minutes() < 10 {
+			if now.Sub(record.UpdatedAt).Seconds() < slaveDelaySeconds {
 				// give master some time to handle it
 				log.Info("wait master")
+				continue
+			}
+		} else if bot.lazyMaster {
+			if now.Sub(record.UpdatedAt).Seconds() < slaveDelaySeconds*2 {
+				// give slave some time to handle it
+				log.Info("wait slave")
 				continue
 			}
 		}
@@ -1090,7 +1110,6 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 
 	log.Info("handle BCH refunds ...")
 
-	// TODO: order by BchLockBlockNum ASC
 	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
 	if err != nil {
 		log.Error("DB error, failed to get SBCH2BCH records: ", err)
@@ -1106,7 +1125,10 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 		requiredConfirmations := bchTimeLock
 		if bot.isSlaveMode {
 			// give master some time to handle it
-			requiredConfirmations += 1
+			requiredConfirmations += slaveDelayBchBlocks
+		} else if bot.lazyMaster {
+			// give slave some time to handle it
+			requiredConfirmations += slaveDelayBchBlocks * 2
 		}
 
 		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
@@ -1210,7 +1232,10 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 		unlockableTime := txTime + uint64(sbchTimeLock)
 		if bot.isSlaveMode {
 			// give master some time to handle it
-			unlockableTime += 600
+			unlockableTime += slaveDelaySeconds
+		} else if bot.lazyMaster {
+			// give slave some time to handle it
+			unlockableTime += slaveDelaySeconds * 2
 		}
 
 		if sbchNow <= unlockableTime {
