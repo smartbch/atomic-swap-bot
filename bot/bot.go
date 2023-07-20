@@ -313,7 +313,9 @@ func loadBchKey(privKeyWIF, masterAddr string, debugMode, slaveMode bool,
 		pubKey = privKey.PubKey().SerializeCompressed()
 		pkh = bchutil.Hash160(pubKey)
 		addr, err = bchutil.NewAddressPubKeyHash(pkh, params)
-		err = fmt.Errorf("failed to derive BCH address: %w", err)
+		if err != nil {
+			err = fmt.Errorf("failed to derive BCH address: %w", err)
+		}
 		return
 	}
 
