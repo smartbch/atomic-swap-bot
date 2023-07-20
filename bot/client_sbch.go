@@ -39,6 +39,7 @@ type ISbchClient interface {
 	unlockSbchFromHtlc(hashLock common.Hash, secret common.Hash) (*common.Hash, error)
 	refundSbchFromHtlc(hashLock common.Hash) (*common.Hash, error)
 	getSwapState(hashLock common.Hash) (uint8, error)
+	getMarketMakerInfo(addr common.Address) (*htlcsbch.MarketMakerInfo, error)
 }
 
 type SbchClient struct {
@@ -142,6 +143,29 @@ func (c *SbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
 	}
 
 	return htlcsbch.UnpackGetSwapState(result)
+}
+
+func (c *SbchClient) getMarketMakerInfo(addr common.Address) (*htlcsbch.MarketMakerInfo, error) {
+	callData, err := htlcsbch.PackGetMarketMaker(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := ethereum.CallMsg{
+		From: c.botAddr,
+		To:   &c.htlcAddr,
+		Gas:  c.openGasLimit,
+		Data: callData,
+	}
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), c.timeout)
+	defer cancelFn()
+	result, err := c.client.CallContract(ctx, msg, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return htlcsbch.UnpackGetMarketMaker(result)
 }
 
 // call open()

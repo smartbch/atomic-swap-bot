@@ -6,6 +6,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/smartbch/atomic-swap-bot/htlcsbch"
 )
 
 type MockSbchClient struct {
@@ -77,5 +79,9 @@ func (c *MockSbchClient) refundSbchFromHtlc(
 }
 
 func (c *MockSbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
+	panic("not implemented")
+}
+
+func (c *MockSbchClient) getMarketMakerInfo(addr common.Address) (*htlcsbch.MarketMakerInfo, error) {
 	panic("not implemented")
 }

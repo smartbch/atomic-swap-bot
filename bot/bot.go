@@ -221,10 +221,6 @@ func NewBot(
 	bchRpcUrl, sbchRpcUrl string,
 	sbchHtlcAddr gethcmn.Address,
 	sbchGasPrice *big.Int,
-	bchTimeLock uint16,
-	penaltyRatio uint16,
-	feeRatio uint16,
-	minSwapVal, maxSwapVal uint64,
 	bchConfirmations uint8,
 	bchSendMinerFeeRate, bchReceiveMinerFeeRate, bchRefundMinerFeeRate uint64,
 	sbchOpenGasLimit, sbchCloseGasLimit, sbchExpireGasLimit uint64,
@@ -257,6 +253,16 @@ func NewBot(
 		return nil, fmt.Errorf("failed to create sBCH RPC client: %w", err)
 	}
 
+	botInfo, err := sbchCli.getMarketMakerInfo(sbchAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query bot info: %w", err)
+	}
+
+	if bytes.Equal(bchPkh, botInfo.BchPkh[:]) {
+		return nil, fmt.Errorf("BCH PKH mismatch: %s != %s",
+			toHex(bchPkh), toHex(botInfo.BchPkh[:]))
+	}
+
 	// open DB
 	db, err := OpenDB(dbFile)
 	if err != nil {
@@ -269,8 +275,6 @@ func NewBot(
 	log.Info("BCH address : ", bchAddr.String())
 	log.Info("sBCH address: ", sbchAddr.String())
 
-	sbchTimeLock := uint32(bchTimeLock) * 10 * 60
-
 	return &MarketMakerBot{
 		db:                     db,
 		bchCli:                 bchCli,
@@ -280,12 +284,12 @@ func NewBot(
 		sbchCli:                sbchCli,
 		sbchPrivKey:            sbchPrivKey,
 		sbchAddr:               sbchAddr,
-		bchTimeLock:            bchTimeLock,
-		sbchTimeLock:           sbchTimeLock,
-		penaltyRatio:           penaltyRatio,
-		serviceFeeRatio:        feeRatio,
-		minSwapVal:             minSwapVal,
-		maxSwapVal:             maxSwapVal,
+		bchTimeLock:            botInfo.BchLockTime,
+		sbchTimeLock:           botInfo.SbchLockTime,
+		penaltyRatio:           botInfo.PenaltyBPS,
+		serviceFeeRatio:        botInfo.FeeBPS,
+		minSwapVal:             weiToSats(botInfo.MinSwapAmt),
+		maxSwapVal:             weiToSats(botInfo.MaxSwapAmt),
 		bchSendMinerFeeRate:    bchSendMinerFeeRate,
 		bchReceiveMinerFeeRate: bchReceiveMinerFeeRate,
 		bchRefundMinerFeeRate:  bchRefundMinerFeeRate,

@@ -556,6 +556,40 @@ var (
 	ExpireEventId common.Hash
 )
 
+/*
+   struct MarketMaker {
+       address addr;          // EVM address
+       uint64  retiredAt;     // retired time
+       bytes32 intro;         // introduction
+       bytes20 bchPkh;        // BCH P2PKH address
+       uint16  bchLockTime;   // BCH HTLC lock time (in blocks)
+       uint32  sbchLockTime;  // sBCH HTLC lock time (in seconds)
+       uint16  penaltyBPS;    // refund penalty ratio (in BPS)
+       uint16  feeBPS;        // service fee ratio (in BPS)
+       uint256 minSwapAmt;    //
+       uint256 maxSwapAmt;    //
+       uint256 stakedValue;   // to prevent spam bots
+       address statusChecker; // the one who can set unavailable status
+       bool    unavailable;   //
+   }
+*/
+
+type MarketMakerInfo struct {
+	Addr         common.Address
+	RetiredAt    uint64
+	Intro        [32]byte
+	BchPkh       [20]byte
+	BchLockTime  uint16
+	SbchLockTime uint32
+	PenaltyBPS   uint16
+	FeeBPS       uint16
+	MinSwapAmt   *big.Int
+	MaxSwapAmt   *big.Int
+	StakedValue  *big.Int
+	Checker      common.Address
+	Unavailable  bool
+}
+
 func init() {
 	var err error
 	htlcAbi, err = abi.JSON(strings.NewReader(_abiJsonStr))
@@ -600,7 +634,6 @@ func PackGetSwapState(hashLock common.Hash) ([]byte, error) {
 	// function getSwapState(bytes32 secretLock) public view returns (States)
 	return htlcAbi.Pack("getSwapState", hashLock)
 }
-
 func UnpackGetSwapState(data []byte) (uint8, error) {
 	result, err := htlcAbi.Unpack("getSwapState", data)
 	if err != nil {
@@ -614,4 +647,63 @@ func UnpackGetSwapState(data []byte) (uint8, error) {
 		return 0, fmt.Errorf("failed to cast result to uint8")
 	}
 	return n, nil
+}
+
+func PackGetMarketMaker(addr common.Address) ([]byte, error) {
+	// mapping (address => MarketMaker) public marketMakers;
+	return htlcAbi.Pack("marketMakers", addr)
+}
+func UnpackGetMarketMaker(data []byte) (*MarketMakerInfo, error) {
+	result, err := htlcAbi.Unpack("marketMakers", data)
+	if err != nil {
+		return nil, err
+	}
+	if len(result) != 13 {
+		return nil, fmt.Errorf("expected fields: 12, got: %d", len(result))
+	}
+
+	ok := false
+	mm := &MarketMakerInfo{}
+
+	if mm.Addr, ok = result[0].(common.Address); !ok {
+		return nil, fmt.Errorf("failed to cast addr")
+	}
+	if mm.RetiredAt, ok = result[1].(uint64); !ok {
+		return nil, fmt.Errorf("failed to cast retiredAt")
+	}
+	if mm.Intro, ok = result[2].([32]byte); !ok {
+		return nil, fmt.Errorf("failed to cast intro")
+	}
+	if mm.BchPkh, ok = result[3].([20]byte); !ok {
+		return nil, fmt.Errorf("failed to cast bchPkh")
+	}
+	if mm.BchLockTime, ok = result[4].(uint16); !ok {
+		return nil, fmt.Errorf("failed to cast bchLockTime")
+	}
+	if mm.SbchLockTime, ok = result[5].(uint32); !ok {
+		return nil, fmt.Errorf("failed to cast sbchLockTime")
+	}
+	if mm.PenaltyBPS, ok = result[6].(uint16); !ok {
+		return nil, fmt.Errorf("failed to cast penaltyBPS")
+	}
+	if mm.FeeBPS, ok = result[7].(uint16); !ok {
+		return nil, fmt.Errorf("failed to cast feeBPS")
+	}
+	if mm.MinSwapAmt, ok = result[8].(*big.Int); !ok {
+		return nil, fmt.Errorf("failed to cast minSwapAmt")
+	}
+	if mm.MaxSwapAmt, ok = result[9].(*big.Int); !ok {
+		return nil, fmt.Errorf("failed to cast maxSwapAmt")
+	}
+	if mm.StakedValue, ok = result[10].(*big.Int); !ok {
+		return nil, fmt.Errorf("failed to cast stakedValue")
+	}
+	if mm.Checker, ok = result[11].(common.Address); !ok {
+		return nil, fmt.Errorf("failed to cast checker")
+	}
+	if mm.Unavailable, ok = result[12].(bool); !ok {
+		return nil, fmt.Errorf("failed to cast unavailable")
+	}
+
+	return mm, nil
 }

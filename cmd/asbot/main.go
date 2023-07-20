@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"math"
 	"math/big"
 	"os"
 
@@ -27,14 +26,9 @@ var (
 	sbchRpcUrl        = "https://localhost:8545"
 	sbchHtlcAddr      = "0x"
 	sbchGasPrice      = 1.05
-	bchTimeLock       = uint64(12 * 6) // 12h
-	penaltyRatio      = uint64(500)    // 5%
-	feeRatio          = uint64(100)    // 1%
-	minSwapVal        = 0.0            // in BCH
-	maxSwapVal        = 5.0            // in BCH
-	bchSendFeeRate    = uint64(2)      // sats/byte
-	bchReceiveFeeRate = uint64(2)      // sats/byte
-	bchRefundFeeRate  = uint64(2)      // sats/byte
+	bchSendFeeRate    = uint64(2) // sats/byte
+	bchReceiveFeeRate = uint64(2) // sats/byte
+	bchRefundFeeRate  = uint64(2) // sats/byte
 	sbchOpenGas       = uint64(500_000)
 	sbchCloseGas      = uint64(500_000)
 	sbchExpireGas     = uint64(500_000)
@@ -54,11 +48,6 @@ func main() {
 	flag.StringVar(&sbchRpcUrl, "sbch-rpc-url", sbchRpcUrl, "sBCH RPC URL")
 	flag.StringVar(&sbchHtlcAddr, "sbch-htlc-addr", sbchHtlcAddr, "sBCH HTLC contract address")
 	flag.Float64Var(&sbchGasPrice, "sbch-gas-price", sbchGasPrice, "sBCH gas price (in Gwei)")
-	flag.Uint64Var(&bchTimeLock, "bch-timelock", bchTimeLock, "BCH HTLC time-lock (in blocks)")
-	flag.Uint64Var(&penaltyRatio, "penalty-ratio", penaltyRatio, "penalty ratio of HTLC refund (in BPS)")
-	flag.Uint64Var(&feeRatio, "fee-ratio", feeRatio, "service fee ratio (in BPS)")
-	flag.Float64Var(&minSwapVal, "min-swap-val", minSwapVal, "min swap value (in BCH)")
-	flag.Float64Var(&maxSwapVal, "max-swap-val", maxSwapVal, "max swap value (in BCH)")
 	flag.Uint64Var(&bchConfirmations, "bch-confirmations", bchConfirmations, "required confirmations of BCH tx ")
 	flag.Uint64Var(&bchSendFeeRate, "bch-send-fee-rate", bchSendFeeRate, "miner fee rate of BCH HTLC sending tx (Sats/byte)")
 	flag.Uint64Var(&bchReceiveFeeRate, "bch-receive-fee-rate", bchReceiveFeeRate, "miner fee rate of BCH HTLC receiving tx (Sats/byte)")
@@ -81,8 +70,6 @@ func main() {
 	_bot, err := bot.NewBot(dbFile, bchPrivKeyWIF, sbchPrivKeyHex,
 		bchMasterAddr, sbchMasterAddr,
 		bchRpcUrl, sbchRpcUrl, _sbchHtlcAddr, _sbchGasPrice,
-		uint16(bchTimeLock), uint16(penaltyRatio), uint16(feeRatio),
-		uint64(math.Round(minSwapVal*1e8)), uint64(math.Round(maxSwapVal*1e8)),
 		uint8(bchConfirmations),
 		bchSendFeeRate, bchReceiveFeeRate, bchRefundFeeRate,
 		sbchOpenGas, sbchCloseGas, sbchExpireGas,
