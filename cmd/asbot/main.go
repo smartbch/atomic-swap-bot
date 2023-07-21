@@ -60,7 +60,7 @@ func main() {
 	flag.BoolVar(&lazyMaster, "lazy-master", lazyMaster, "delay to send unlock|refund tx (debug mode only)")
 	flag.Parse()
 
-	if bchPrivKeyWIF == "" || sbchPrivKeyHex == "" || !debugMode {
+	if (!slaveMode && bchPrivKeyWIF == "") || sbchPrivKeyHex == "" || !debugMode {
 		bchPrivKeyWIF, sbchPrivKeyHex = readKeys()
 	}
 
