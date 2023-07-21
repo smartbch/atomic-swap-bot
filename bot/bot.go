@@ -1038,12 +1038,11 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 		log.Info("tx: ", htlcbch.MsgTxToHex(tx))
 
 		txHashStr := "?"
-		txHash, err := bot.bchCli.SendTx(tx)
-		if err == nil {
-			log.Info("unlock tx sent, hash: ", txHash.String())
+		if txHash, err := bot.bchCli.SendTx(tx); err == nil {
+			log.Info("BCH unlock tx sent, hash: ", txHash.String())
 			txHashStr = txHash.String()
 		} else {
-			log.Error("failed to send unlock tx: ", err)
+			log.Error("failed to unlock BCH: ", err)
 			if isUtxoSpentErr(err) {
 				log.Info("UTXO is spent by others")
 			} else {
@@ -1088,8 +1087,12 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 
 		hashLock := gethcmn.HexToHash(record.HashLock)
 		secret := gethcmn.HexToHash(record.Secret)
-		txHash, err := bot.sbchCli.unlockSbchFromHtlc(hashLock, secret)
-		if err != nil {
+
+		txHashStr := "?"
+		if txHash, err := bot.sbchCli.unlockSbchFromHtlc(hashLock, secret); err == nil {
+			txHashStr = toHex(txHash[:])
+			log.Info("sBCH unlock tx sent, hash: ", txHashStr)
+		} else {
 			log.Error("RPC error, failed to unlock sBCH: ", err)
 
 			state, _ := bot.sbchCli.getSwapState(hashLock)
@@ -1100,7 +1103,7 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 			}
 		}
 
-		record.UpdateStatusToSbchUnlocked(toHex(txHash[:]))
+		record.UpdateStatusToSbchUnlocked(txHashStr)
 		err = bot.db.updateSbch2BchRecord(record)
 		if err != nil {
 			log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
@@ -1175,12 +1178,11 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 		log.Info("refund tx: ", htlcbch.MsgTxToHex(tx))
 
 		txHashStr := "?"
-		txHash, err := bot.bchCli.SendTx(tx)
-		if err == nil {
-			log.Info("refund tx sent, hash: ", txHash.String())
+		if txHash, err := bot.bchCli.SendTx(tx); err == nil {
+			log.Info("BCH refund tx sent, hash: ", txHash.String())
 			txHashStr = txHash.String()
 		} else {
-			log.Error("failed to send refund tx: ", err)
+			log.Error("failed to refund BCH: ", err)
 			if isUtxoSpentErr(err) {
 				log.Info("UTXO is spent by others")
 			} else {
@@ -1250,8 +1252,12 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 		}
 
 		hashLock := gethcmn.HexToHash(record.HashLock)
-		txHash, err := bot.sbchCli.refundSbchFromHtlc(hashLock)
-		if err != nil {
+
+		txHashStr := "?"
+		if txHash, err := bot.sbchCli.refundSbchFromHtlc(hashLock); err == nil {
+			txHashStr = toHex(txHash.Bytes())
+			log.Info("sBCH refund tx sent, hash: ", txHashStr)
+		} else {
 			log.Error("RPC error, failed to refund sBCH: ", err)
 
 			state, _ := bot.sbchCli.getSwapState(hashLock)
@@ -1262,7 +1268,7 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 			}
 		}
 
-		record.UpdateStatusToSbchRefunded(toHex(txHash.Bytes()))
+		record.UpdateStatusToSbchRefunded(txHashStr)
 		err = bot.db.updateBch2SbchRecord(record)
 		if err != nil {
 			log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
