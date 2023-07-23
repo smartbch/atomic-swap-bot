@@ -11,15 +11,15 @@ import (
 )
 
 func TestABI(t *testing.T) {
-	require.Equal(t, "0x7c669c5d09f55af8b2e3b6e432f8bd140dd3a4811451b4864833bcee54f7df67",
+	require.Equal(t, "0xb7678aed94e863a9860243fb9eb49844e931081d24c64c79cd36f1763c5fbcc3",
 		OpenEventId.String())
-	require.Equal(t, "0x842eb23b01edb198a935f6cf1ead8ec295651395574206ce5787d42293c5b430",
+	require.Equal(t, "0x3175e1e0b41583586838d3f2db12a22ab1b97413989a1e14f52bc748396ee957",
 		CloseEventId.String())
-	require.Equal(t, "0xbddd9b693ea862fad6ecf78fd51c065be26fda94d1f3cad3a7d691453a38a735",
+	require.Equal(t, "0x3fbd469ec3a5ce074f975f76ce27e727ba21c99176917b97ae2e713695582a12",
 		ExpireEventId.String())
-	require.Equal(t, "f4fa2653", hex.EncodeToString(htlcAbi.Methods["open"].ID))
-	require.Equal(t, "f10ca95a", hex.EncodeToString(htlcAbi.Methods["close"].ID))
-	require.Equal(t, "c6441798", hex.EncodeToString(htlcAbi.Methods["expire"].ID))
+	require.Equal(t, "88070d39", hex.EncodeToString(htlcAbi.Methods["lock"].ID))
+	require.Equal(t, "c8525c09", hex.EncodeToString(htlcAbi.Methods["unlock"].ID))
+	require.Equal(t, "7249fbb6", hex.EncodeToString(htlcAbi.Methods["refund"].ID))
 }
 
 func TestPackOpen(t *testing.T) {
@@ -30,11 +30,12 @@ func TestPackOpen(t *testing.T) {
 
 	data, err := PackOpen(recipient, hashLock, timeLock, bchAddr)
 	require.NoError(t, err)
-	require.Equal(t, strings.ReplaceAll(`f4fa2653
+	require.Equal(t, strings.ReplaceAll(`88070d39
 000000000000000000000000626f74bb00000000000000000000000000000000
 736563726574cc00000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000012345
 75736572dd000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000
 `, "\n", ""), hex.EncodeToString(data))
 }
@@ -44,7 +45,7 @@ func TestPackClose(t *testing.T) {
 	secret := common.Hash{'s', 'e', 'c', 'r', 'e', 't', 0xbb}
 	data, err := PackClose(hashLock, secret)
 	require.NoError(t, err)
-	require.Equal(t, strings.ReplaceAll(`f10ca95a
+	require.Equal(t, strings.ReplaceAll(`c8525c09
 686173686c6f636baa0000000000000000000000000000000000000000000000
 736563726574bb00000000000000000000000000000000000000000000000000
 `, "\n", ""), hex.EncodeToString(data))
@@ -54,7 +55,7 @@ func TestPackExpire(t *testing.T) {
 	hashLock := common.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k', 0xaa}
 	data, err := PackExpire(hashLock)
 	require.NoError(t, err)
-	require.Equal(t, strings.ReplaceAll(`c6441798
+	require.Equal(t, strings.ReplaceAll(`7249fbb6
 686173686c6f636baa0000000000000000000000000000000000000000000000
 `, "\n", ""), hex.EncodeToString(data))
 }
