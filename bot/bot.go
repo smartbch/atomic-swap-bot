@@ -134,7 +134,7 @@ M: master, S: slave
 | handleBchDepositTxB2S   |✓|✓|                | New            |
 | handleBchUserDeposits   |✓| | New            | SbchLocked     |
 | handleSbchLockEventB2S  | |✓| New            | SbchLocked     |
-| handleSbchCloseEvent    |✓|✓| SbchLocked     | SecretRevealed |
+| handleSbchUnlockEvent   |✓|✓| SbchLocked     | SecretRevealed |
 | unlockBchUserDeposits   |✓|✓| SecretRevealed | BchUnlocked    |
 +-------------------------+-+-+----------------+----------------+
 +-------------------------+-+-+----------------+----------------+
@@ -223,7 +223,7 @@ func NewBot(
 	sbchGasPrice *big.Int,
 	bchConfirmations uint8,
 	bchSendMinerFeeRate, bchReceiveMinerFeeRate, bchRefundMinerFeeRate uint64,
-	sbchLockGasLimit, sbchCloseGasLimit, sbchExpireGasLimit uint64,
+	sbchLockGasLimit, sbchUnlockGasLimit, sbchExpireGasLimit uint64,
 	debugMode bool,
 	slaveMode bool,
 	lazyMaster bool, // debug only
@@ -248,7 +248,7 @@ func NewBot(
 		return nil, fmt.Errorf("faield to create BCH RPC client: %w", err)
 	}
 	sbchCli, err := newSbchClient(sbchRpcUrl, 5*time.Second, sbchPrivKey, sbchAddr, sbchHtlcAddr,
-		sbchGasPrice, sbchLockGasLimit, sbchCloseGasLimit, sbchExpireGasLimit)
+		sbchGasPrice, sbchLockGasLimit, sbchUnlockGasLimit, sbchExpireGasLimit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sBCH RPC client: %w", err)
 	}
@@ -644,8 +644,8 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 		case htlcsbch.LockEventId:
 			bot.handleSbchLockEventS2B(ethLog)
 			bot.handleSbchLockEventB2S(ethLog)
-		case htlcsbch.CloseEventId:
-			bot.handleSbchCloseEvent(ethLog)
+		case htlcsbch.UnlockEventId:
+			bot.handleSbchUnlockEvent(ethLog)
 		}
 	}
 
@@ -771,14 +771,14 @@ func (bot *MarketMakerBot) handleSbchLockEventB2S(ethLog gethtypes.Log) {
 }
 
 // bch2sbch records: SbchLocked => SecretRevealed
-func (bot *MarketMakerBot) handleSbchCloseEvent(ethLog gethtypes.Log) {
-	closeLog := htlcsbch.ParseHtlcCloseLog(ethLog)
-	if closeLog == nil {
+func (bot *MarketMakerBot) handleSbchUnlockEvent(ethLog gethtypes.Log) {
+	unlockLog := htlcsbch.ParseHtlcUnlockLog(ethLog)
+	if unlockLog == nil {
 		return
 	}
 
-	log.Info("got a sBCH Close log: ", toJSON(closeLog))
-	hashLock := toHex(closeLog.HashLock[:])
+	log.Info("got a sBCH Unlock log: ", toJSON(unlockLog))
+	hashLock := toHex(unlockLog.HashLock[:])
 	record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
 	//log.Info(record)
 	if err != nil {
@@ -788,10 +788,10 @@ func (bot *MarketMakerBot) handleSbchCloseEvent(ethLog gethtypes.Log) {
 		return
 	}
 
-	hashLock2 := secretToHashLock(closeLog.Secret[:])
+	hashLock2 := secretToHashLock(unlockLog.Secret[:])
 	if hashLock2 != hashLock {
 		log.Warnf("hashLock not match! secret: %s => hashLock: %s, DB hashLock: %s, ",
-			toHex(closeLog.Secret[:]), hashLock2, hashLock)
+			toHex(unlockLog.Secret[:]), hashLock2, hashLock)
 		return
 	}
 
@@ -799,7 +799,7 @@ func (bot *MarketMakerBot) handleSbchCloseEvent(ethLog gethtypes.Log) {
 		return
 	}
 
-	record.UpdateStatusToSecretRevealed(toHex(closeLog.Secret[:]), toHex(closeLog.TxHash[:]))
+	record.UpdateStatusToSecretRevealed(toHex(unlockLog.Secret[:]), toHex(unlockLog.TxHash[:]))
 	err = bot.db.updateBch2SbchRecord(record)
 	if err != nil {
 		log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
@@ -1096,8 +1096,8 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 			log.Error("RPC error, failed to unlock sBCH: ", err)
 
 			state, _ := bot.sbchCli.getSwapState(hashLock)
-			if state == SwapClosed {
-				log.Info("swap is closed")
+			if state == SwapUnlocked {
+				log.Info("swap is unlockd")
 			} else {
 				continue
 			}

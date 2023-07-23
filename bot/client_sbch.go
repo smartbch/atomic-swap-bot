@@ -24,7 +24,7 @@ const (
 const (
 	SwapInvalid = iota
 	SwapLocked
-	SwapClosed
+	SwapUnlocked
 	SwapExpired
 )
 
@@ -51,7 +51,7 @@ type SbchClient struct {
 	chainId        *big.Int
 	gasPrice       *big.Int
 	lockGasLimit   uint64
-	closeGasLimit  uint64
+	unlockGasLimit uint64
 	expireGasLimit uint64
 }
 
@@ -60,7 +60,7 @@ func newSbchClient(
 	privKey *ecdsa.PrivateKey, botAddr common.Address,
 	htlcAddr common.Address,
 	gasPrice *big.Int,
-	lockGasLimit, closeGasLimit, expireGasLimit uint64,
+	lockGasLimit, unlockGasLimit, expireGasLimit uint64,
 ) (*SbchClient, error) {
 
 	client, err := ethclient.Dial(rawUrl)
@@ -75,7 +75,7 @@ func newSbchClient(
 		htlcAddr:       htlcAddr,
 		gasPrice:       gasPrice,
 		lockGasLimit:   lockGasLimit,
-		closeGasLimit:  closeGasLimit,
+		unlockGasLimit: unlockGasLimit,
 		expireGasLimit: expireGasLimit,
 	}, nil
 }
@@ -190,7 +190,7 @@ func (c *SbchClient) lockSbchToHtlc(
 	return c.callHtlc(amt, data, c.lockGasLimit)
 }
 
-// call close()
+// call unlock()
 func (c *SbchClient) unlockSbchFromHtlc(
 	hashLock common.Hash,
 	secret common.Hash,
@@ -199,11 +199,11 @@ func (c *SbchClient) unlockSbchFromHtlc(
 		", hashLock: ", hashLock.String(),
 		", secret: ", secret.String())
 
-	data, err := htlcsbch.PackClose(hashLock, secret)
+	data, err := htlcsbch.PackUnlock(hashLock, secret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack calldata: %w", err)
 	}
-	return c.callHtlc(big.NewInt(0), data, c.closeGasLimit)
+	return c.callHtlc(big.NewInt(0), data, c.unlockGasLimit)
 }
 
 // call expire()

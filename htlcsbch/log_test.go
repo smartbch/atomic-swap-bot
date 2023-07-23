@@ -45,7 +45,7 @@ func TestParseHtlcOpenLog(t *testing.T) {
 	require.Equal(t, uint16(0x345), lockLog.PenaltyBPS)
 }
 
-func TestParseHtlcCloseLog(t *testing.T) {
+func TestParseHtlcUnlockLog(t *testing.T) {
 	logJson := `{
   "address": "0xc03a886b25cabc20db49170981ef118693e807d9",
   "topics": [
@@ -66,14 +66,14 @@ func TestParseHtlcCloseLog(t *testing.T) {
 	err := json.Unmarshal([]byte(logJson), &log)
 	require.NoError(t, err)
 
-	closeLog := ParseHtlcCloseLog(log)
-	require.NotNil(t, closeLog)
+	unlockLog := ParseHtlcUnlockLog(log)
+	require.NotNil(t, unlockLog)
 	require.Equal(t, "0x576788bdc7c221a4cf6c2670f7aa54062599f45a1806afe60e46d34a5cee8ae8",
-		closeLog.TxHash.String())
+		unlockLog.TxHash.String())
 	require.Equal(t, "0x3bd34fe3485138a7be6f1be4a1d3c23661090d2c95af969c5c73fee04089ab06",
-		closeLog.HashLock.String())
+		unlockLog.HashLock.String())
 	require.Equal(t, "0x3163666434353566623035326435363964633361363337636263373065390000",
-		closeLog.Secret.String())
+		unlockLog.Secret.String())
 }
 
 func TestParseExpireLog(t *testing.T) {

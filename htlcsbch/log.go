@@ -18,7 +18,7 @@ type LockLog struct {
 	PenaltyBPS      uint16
 }
 
-type CloseLog struct {
+type UnlockLog struct {
 	TxHash   common.Hash
 	HashLock common.Hash
 	Secret   common.Hash
@@ -49,12 +49,12 @@ func ParseHtlcLockLog(log types.Log) *LockLog {
 	}
 }
 
-func ParseHtlcCloseLog(log types.Log) *CloseLog {
+func ParseHtlcUnlockLog(log types.Log) *UnlockLog {
 	if len(log.Topics) != 3 ||
-		log.Topics[0] != CloseEventId {
+		log.Topics[0] != UnlockEventId {
 		return nil
 	}
-	return &CloseLog{
+	return &UnlockLog{
 		TxHash:   log.TxHash,
 		HashLock: log.Topics[1],
 		Secret:   log.Topics[2],

@@ -14,7 +14,7 @@ func TestABI(t *testing.T) {
 	require.Equal(t, "0xb7678aed94e863a9860243fb9eb49844e931081d24c64c79cd36f1763c5fbcc3",
 		LockEventId.String())
 	require.Equal(t, "0x3175e1e0b41583586838d3f2db12a22ab1b97413989a1e14f52bc748396ee957",
-		CloseEventId.String())
+		UnlockEventId.String())
 	require.Equal(t, "0x3fbd469ec3a5ce074f975f76ce27e727ba21c99176917b97ae2e713695582a12",
 		ExpireEventId.String())
 	require.Equal(t, "88070d39", hex.EncodeToString(htlcAbi.Methods["lock"].ID))
@@ -40,10 +40,10 @@ func TestPackOpen(t *testing.T) {
 `, "\n", ""), hex.EncodeToString(data))
 }
 
-func TestPackClose(t *testing.T) {
+func TestPackUnlock(t *testing.T) {
 	hashLock := common.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k', 0xaa}
 	secret := common.Hash{'s', 'e', 'c', 'r', 'e', 't', 0xbb}
-	data, err := PackClose(hashLock, secret)
+	data, err := PackUnlock(hashLock, secret)
 	require.NoError(t, err)
 	require.Equal(t, strings.ReplaceAll(`c8525c09
 686173686c6f636baa0000000000000000000000000000000000000000000000

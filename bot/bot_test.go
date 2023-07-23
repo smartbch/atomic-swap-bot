@@ -379,7 +379,7 @@ func TestBch2Sbch_userUnlockSbch(t *testing.T) {
 	_sbchCli.logs[458] = []gethtypes.Log{
 		{
 			Topics: []gethcmn.Hash{
-				htlcsbch.CloseEventId,
+				htlcsbch.UnlockEventId,
 				_hashLock,
 				_secret,
 			},

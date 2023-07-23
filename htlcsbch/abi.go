@@ -572,7 +572,7 @@ const (
 var (
 	htlcAbi       abi.ABI
 	LockEventId   common.Hash
-	CloseEventId  common.Hash
+	UnlockEventId common.Hash
 	ExpireEventId common.Hash
 )
 
@@ -618,7 +618,7 @@ func init() {
 	}
 
 	LockEventId = htlcAbi.Events["Lock"].ID
-	CloseEventId = htlcAbi.Events["Unlock"].ID
+	UnlockEventId = htlcAbi.Events["Unlock"].ID
 	ExpireEventId = htlcAbi.Events["Refund"].ID
 }
 
@@ -641,7 +641,7 @@ func PackOpen(
 		recipient, hashLock, big.NewInt(int64(timeLock)), bchAddr, penaltyBPS, false)
 }
 
-func PackClose(hashLock, secret common.Hash) ([]byte, error) {
+func PackUnlock(hashLock, secret common.Hash) ([]byte, error) {
 	// function unlock(bytes32 _secretLock, bytes32 _secretKey) public
 	return htlcAbi.Pack("unlock", hashLock, secret)
 }
