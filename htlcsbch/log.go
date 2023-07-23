@@ -24,7 +24,7 @@ type UnlockLog struct {
 	Secret   common.Hash
 }
 
-type ExpireLog struct {
+type RefundLog struct {
 	TxHash   common.Hash
 	HashLock common.Hash
 }
@@ -61,12 +61,12 @@ func ParseHtlcUnlockLog(log types.Log) *UnlockLog {
 	}
 }
 
-func ParseHtlcExpireLog(log types.Log) *ExpireLog {
+func ParseHtlcRefundLog(log types.Log) *RefundLog {
 	if len(log.Topics) != 2 ||
-		log.Topics[0] != ExpireEventId {
+		log.Topics[0] != RefundEventId {
 		return nil
 	}
-	return &ExpireLog{
+	return &RefundLog{
 		TxHash:   log.TxHash,
 		HashLock: log.Topics[1],
 	}

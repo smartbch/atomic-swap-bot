@@ -223,7 +223,7 @@ func NewBot(
 	sbchGasPrice *big.Int,
 	bchConfirmations uint8,
 	bchSendMinerFeeRate, bchReceiveMinerFeeRate, bchRefundMinerFeeRate uint64,
-	sbchLockGasLimit, sbchUnlockGasLimit, sbchExpireGasLimit uint64,
+	sbchLockGasLimit, sbchUnlockGasLimit, sbchRefundGasLimit uint64,
 	debugMode bool,
 	slaveMode bool,
 	lazyMaster bool, // debug only
@@ -248,7 +248,7 @@ func NewBot(
 		return nil, fmt.Errorf("faield to create BCH RPC client: %w", err)
 	}
 	sbchCli, err := newSbchClient(sbchRpcUrl, 5*time.Second, sbchPrivKey, sbchAddr, sbchHtlcAddr,
-		sbchGasPrice, sbchLockGasLimit, sbchUnlockGasLimit, sbchExpireGasLimit)
+		sbchGasPrice, sbchLockGasLimit, sbchUnlockGasLimit, sbchRefundGasLimit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sBCH RPC client: %w", err)
 	}
@@ -452,7 +452,7 @@ func (bot *MarketMakerBot) scanBchBlocks() (gotNewBlocks bool) {
 	return gotNewBlocks
 }
 
-// handle BCH lock|unlock|expire txs
+// handle BCH lock|unlock|refund txs
 func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 	//log.Info("get BCH block#", h, " ...")
 	block, err := bot.bchCli.getBlock(h)
@@ -1261,7 +1261,7 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 			log.Error("RPC error, failed to refund sBCH: ", err)
 
 			state, _ := bot.sbchCli.getSwapState(hashLock)
-			if state == SwapExpired {
+			if state == SwapRefunded {
 				log.Info("swap is refunded")
 			} else {
 				continue

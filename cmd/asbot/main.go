@@ -31,7 +31,7 @@ var (
 	bchRefundFeeRate  = uint64(2) // sats/byte
 	sbchOpenGas       = uint64(500_000)
 	sbchUnlockGas     = uint64(500_000)
-	sbchExpireGas     = uint64(500_000)
+	sbchRefundGas     = uint64(500_000)
 	bchConfirmations  = uint64(10)
 	debugMode         = true
 	slaveMode         = false
@@ -54,7 +54,7 @@ func main() {
 	flag.Uint64Var(&bchRefundFeeRate, "bch-refund-fee-rate", bchReceiveFeeRate, "miner fee rate of BCH HTLC refund tx (Sats/byte)")
 	flag.Uint64Var(&sbchOpenGas, "sbch-lock-gas", sbchOpenGas, "gas limit of sBCH HTLC lock tx")
 	flag.Uint64Var(&sbchUnlockGas, "sbch-unlock-gas", sbchUnlockGas, "gas limit of sBCH HTLC unlock tx")
-	flag.Uint64Var(&sbchExpireGas, "sbch-expire-gas", sbchExpireGas, "gas limit of sBCH HTLC expire tx")
+	flag.Uint64Var(&sbchRefundGas, "sbch-refund-gas", sbchRefundGas, "gas limit of sBCH HTLC refund tx")
 	flag.BoolVar(&debugMode, "debug", debugMode, "debug mode")
 	flag.BoolVar(&slaveMode, "slave", slaveMode, "slave mode")
 	flag.BoolVar(&lazyMaster, "lazy-master", lazyMaster, "delay to send unlock|refund tx (debug mode only)")
@@ -72,7 +72,7 @@ func main() {
 		bchRpcUrl, sbchRpcUrl, _sbchHtlcAddr, _sbchGasPrice,
 		uint8(bchConfirmations),
 		bchSendFeeRate, bchReceiveFeeRate, bchRefundFeeRate,
-		sbchOpenGas, sbchUnlockGas, sbchExpireGas,
+		sbchOpenGas, sbchUnlockGas, sbchRefundGas,
 		debugMode, slaveMode, lazyMaster,
 	)
 	if err != nil {
