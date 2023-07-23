@@ -894,7 +894,7 @@ func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, records, 0)
 
-	toLate, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusTooLateToLockSbch, 100)
+	toLate, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusTooLateToLockBch, 100)
 	require.NoError(t, err)
 	require.Len(t, toLate, 1)
 }

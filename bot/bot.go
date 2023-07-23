@@ -925,7 +925,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 		timeElapsed := currTime - record.SbchLockTime
 		if uint32(timeElapsed) > bot.sbchTimeLock/3 {
 			log.Info("too late to lock BCH, time elapsed: ", timeElapsed, ", timeLock: ", record.TimeLock)
-			record.Status = Sbch2BchStatusTooLateToLockSbch
+			record.Status = Sbch2BchStatusTooLateToLockBch
 			err = bot.db.updateSbch2BchRecord(record)
 			if err != nil {
 				log.Error("DB error, failed to update status of SBCH2BCH record: ", err)

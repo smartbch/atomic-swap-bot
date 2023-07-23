@@ -27,7 +27,7 @@ const (
 	Sbch2BchStatusSecretRevealed
 	Sbch2BchStatusSbchUnlocked
 	Sbch2BchStatusBchRefunded
-	Sbch2BchStatusTooLateToLockSbch
+	Sbch2BchStatusTooLateToLockBch
 )
 
 type LastHeights struct {
@@ -294,7 +294,7 @@ func (db DB) updateSbch2BchRecord(record *Sbch2BchRecord) error {
 		if record.SbchUnlockTxHash == "" {
 			return fmt.Errorf("BchUnlockTxHash is empty")
 		}
-	} //else if record.Status == Sbch2BchStatusTooLateToLockSbch {}
+	} //else if record.Status == Sbch2BchStatusTooLateToLockBch {}
 	result := db.db.Save(record)
 	return result.Error
 }
