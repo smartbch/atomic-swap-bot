@@ -23,7 +23,7 @@ const (
 
 const (
 	SwapInvalid = iota
-	SwapOpen
+	SwapLocked
 	SwapClosed
 	SwapExpired
 )
@@ -50,7 +50,7 @@ type SbchClient struct {
 	htlcAddr       common.Address
 	chainId        *big.Int
 	gasPrice       *big.Int
-	openGasLimit   uint64
+	lockGasLimit   uint64
 	closeGasLimit  uint64
 	expireGasLimit uint64
 }
@@ -60,7 +60,7 @@ func newSbchClient(
 	privKey *ecdsa.PrivateKey, botAddr common.Address,
 	htlcAddr common.Address,
 	gasPrice *big.Int,
-	openGasLimit, closeGasLimit, expireGasLimit uint64,
+	lockGasLimit, closeGasLimit, expireGasLimit uint64,
 ) (*SbchClient, error) {
 
 	client, err := ethclient.Dial(rawUrl)
@@ -74,7 +74,7 @@ func newSbchClient(
 		botAddr:        botAddr,
 		htlcAddr:       htlcAddr,
 		gasPrice:       gasPrice,
-		openGasLimit:   openGasLimit,
+		lockGasLimit:   lockGasLimit,
 		closeGasLimit:  closeGasLimit,
 		expireGasLimit: expireGasLimit,
 	}, nil
@@ -131,7 +131,7 @@ func (c *SbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
 	msg := ethereum.CallMsg{
 		From: c.botAddr,
 		To:   &c.htlcAddr,
-		Gas:  c.openGasLimit,
+		Gas:  c.lockGasLimit,
 		Data: callData,
 	}
 
@@ -154,7 +154,7 @@ func (c *SbchClient) getMarketMakerInfo(addr common.Address) (*htlcsbch.MarketMa
 	msg := ethereum.CallMsg{
 		From: c.botAddr,
 		To:   &c.htlcAddr,
-		Gas:  c.openGasLimit,
+		Gas:  c.lockGasLimit,
 		Data: callData,
 	}
 
@@ -168,7 +168,7 @@ func (c *SbchClient) getMarketMakerInfo(addr common.Address) (*htlcsbch.MarketMa
 	return htlcsbch.UnpackGetMarketMaker(result)
 }
 
-// call open()
+// call lock()
 func (c *SbchClient) lockSbchToHtlc(
 	userEvmAddr common.Address,
 	hashLock common.Hash,
@@ -187,7 +187,7 @@ func (c *SbchClient) lockSbchToHtlc(
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack calldata: %w", err)
 	}
-	return c.callHtlc(amt, data, c.openGasLimit)
+	return c.callHtlc(amt, data, c.lockGasLimit)
 }
 
 // call close()

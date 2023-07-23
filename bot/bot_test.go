@@ -545,7 +545,7 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 	require.Equal(t, Bch2SbchStatusSbchRefunded, record0.Status)
 }
 
-func TestBch2Sbch_handleSbchOpenEvent_slaveMode(t *testing.T) {
+func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 	_val := uint64(12345678)
 	_txHash := gethHash32Bytes("bchlock")
 	_botPkh := gethAddrBytes("bot")
@@ -581,7 +581,7 @@ func TestBch2Sbch_handleSbchOpenEvent_slaveMode(t *testing.T) {
 			BlockNumber: 459,
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
-				htlcsbch.OpenEventId,
+				htlcsbch.LockEventId,
 				gethAddrToHash32(_botEvmAddr),
 				gethAddrToHash32(_userEvmAddr),
 			},
@@ -645,7 +645,7 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 			BlockNumber: 459,
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
-				htlcsbch.OpenEventId,
+				htlcsbch.LockEventId,
 				gethAddrToHash32(_userEvmAddr),
 				gethAddrToHash32(testEvmAddr),
 			},
@@ -705,7 +705,7 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 			BlockNumber: 459,
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
-				htlcsbch.OpenEventId,
+				htlcsbch.LockEventId,
 				gethAddrToHash32(_userEvmAddr),
 				gethAddrToHash32(testEvmAddr),
 			},
@@ -722,7 +722,7 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 			BlockNumber: 459,
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
-				htlcsbch.OpenEventId,
+				htlcsbch.LockEventId,
 				gethAddrToHash32(_userEvmAddr),
 				gethAddrToHash32(testEvmAddr),
 			},
@@ -739,7 +739,7 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 			BlockNumber: 459,
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
-				htlcsbch.OpenEventId,
+				htlcsbch.LockEventId,
 				gethAddrToHash32(_userEvmAddr),
 				gethAddrToHash32(testEvmAddr),
 			},
@@ -756,7 +756,7 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 			BlockNumber: 459,
 			TxHash:      _sbchLockTxHash,
 			Topics: []gethcmn.Hash{
-				htlcsbch.OpenEventId,
+				htlcsbch.LockEventId,
 				gethAddrToHash32(_userEvmAddr),
 				gethAddrToHash32(testEvmAddr),
 			},

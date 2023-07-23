@@ -133,7 +133,7 @@ M: master, S: slave
 +-------------------------+-+-+----------------+----------------+
 | handleBchDepositTxB2S   |✓|✓|                | New            |
 | handleBchUserDeposits   |✓| | New            | SbchLocked     |
-| handleSbchOpenEventB2S  | |✓| New            | SbchLocked     |
+| handleSbchLockEventB2S  | |✓| New            | SbchLocked     |
 | handleSbchCloseEvent    |✓|✓| SbchLocked     | SecretRevealed |
 | unlockBchUserDeposits   |✓|✓| SecretRevealed | BchUnlocked    |
 +-------------------------+-+-+----------------+----------------+
@@ -142,7 +142,7 @@ M: master, S: slave
 +-------------------------+-+-+----------------+----------------+
 | handleBchDepositTxB2S   |✓|✓|                | New            |
 | handleBchUserDeposits   |✓| | New            | SbchLocked     |
-| handleSbchOpenEventB2S  | |✓| New            | SbchLocked     |
+| handleSbchLockEventB2S  | |✓| New            | SbchLocked     |
 | refundLockedSbch        |✓|✓| SbchLocked     | SbchRefunded   |
 +-------------------------+-+-+----------------+----------------+
 +-------------------------+-+-+----------------+----------------+
@@ -155,7 +155,7 @@ M: master, S: slave
 +-------------------------+-+-+----------------+----------------+
 | SBCH2BCH: normal        |M|S| old status     | new status     |
 +-------------------------+-+-+----------------+----------------+
-| handleSbchOpenEventS2B  |✓|✓|                | New            |
+| handleSbchLockEventS2B  |✓|✓|                | New            |
 | handleSbchUserDeposits  |✓| | New            | BchLocked      |
 | handleBchDepositTxS2B   | |✓| New            | BchLocked      |
 | handleBchReceiptTx      |✓|✓| BchLocked      | SecretRevealed |
@@ -164,7 +164,7 @@ M: master, S: slave
 +-------------------------+-+-+----------------+----------------+
 | SBCH2BCH: refund        |M|S| old status     | new status     |
 +-------------------------+-+-+----------------+----------------+
-| handleSbchOpenEventS2B  |✓|✓|                | New            |
+| handleSbchLockEventS2B  |✓|✓|                | New            |
 | handleSbchUserDeposits  |✓| | New            | BchLocked      |
 | handleBchDepositTxS2B   | |✓| New            | BchLocked      |
 | refundLockedBCH         |✓|✓| BchLocked      | BchRefunded    |
@@ -172,7 +172,7 @@ M: master, S: slave
 +-------------------------+-+-+----------------+----------------+
 | SBCH2BCH: too late      |M|S| old status     | new status     |
 +-------------------------+-+-+----------------+----------------+
-| handleSbchOpenEventS2B  |✓|✓|                | New            |
+| handleSbchLockEventS2B  |✓|✓|                | New            |
 | handleSbchUserDeposits  |✓| | New            | TooLate        |
 +-------------------------+-+-+----------------+----------------+
 
@@ -223,7 +223,7 @@ func NewBot(
 	sbchGasPrice *big.Int,
 	bchConfirmations uint8,
 	bchSendMinerFeeRate, bchReceiveMinerFeeRate, bchRefundMinerFeeRate uint64,
-	sbchOpenGasLimit, sbchCloseGasLimit, sbchExpireGasLimit uint64,
+	sbchLockGasLimit, sbchCloseGasLimit, sbchExpireGasLimit uint64,
 	debugMode bool,
 	slaveMode bool,
 	lazyMaster bool, // debug only
@@ -248,7 +248,7 @@ func NewBot(
 		return nil, fmt.Errorf("faield to create BCH RPC client: %w", err)
 	}
 	sbchCli, err := newSbchClient(sbchRpcUrl, 5*time.Second, sbchPrivKey, sbchAddr, sbchHtlcAddr,
-		sbchGasPrice, sbchOpenGasLimit, sbchCloseGasLimit, sbchExpireGasLimit)
+		sbchGasPrice, sbchLockGasLimit, sbchCloseGasLimit, sbchExpireGasLimit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sBCH RPC client: %w", err)
 	}
@@ -641,9 +641,9 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 	for _, ethLog := range logs {
 		log.Info("sBCH log: ", toJSON(ethLog))
 		switch ethLog.Topics[0] {
-		case htlcsbch.OpenEventId:
-			bot.handleSbchOpenEventS2B(ethLog)
-			bot.handleSbchOpenEventB2S(ethLog)
+		case htlcsbch.LockEventId:
+			bot.handleSbchLockEventS2B(ethLog)
+			bot.handleSbchLockEventB2S(ethLog)
 		case htlcsbch.CloseEventId:
 			bot.handleSbchCloseEvent(ethLog)
 		}
@@ -657,42 +657,42 @@ func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 	return true
 }
 
-// find sBCH open events, create sbch2bch records (status = new)
-func (bot *MarketMakerBot) handleSbchOpenEventS2B(ethLog gethtypes.Log) {
-	openLog := htlcsbch.ParseHtlcOpenLog(ethLog)
-	if openLog == nil {
+// find sBCH lock events, create sbch2bch records (status = new)
+func (bot *MarketMakerBot) handleSbchLockEventS2B(ethLog gethtypes.Log) {
+	lockLog := htlcsbch.ParseHtlcLockLog(ethLog)
+	if lockLog == nil {
 		return
 	}
 
-	if openLog.UnlockerAddr != bot.sbchAddr {
+	if lockLog.UnlockerAddr != bot.sbchAddr {
 		log.Info("not locked to me",
-			", unlockerAddr: ", openLog.UnlockerAddr.String(),
+			", unlockerAddr: ", lockLog.UnlockerAddr.String(),
 			//", botAddr: ", bot.sbchAddr.String(),
 		)
 		return
 	}
 
 	zeroAddr := gethcmn.Address{}
-	if openLog.BchRecipientPkh == zeroAddr {
+	if lockLog.BchRecipientPkh == zeroAddr {
 		log.Info("BchRecipientPkh is zero, skip")
 		return
 	}
 
-	penaltyBPS := openLog.PenaltyBPS
+	penaltyBPS := lockLog.PenaltyBPS
 	if penaltyBPS != bot.penaltyRatio {
 		log.Infof("invalid penaltyRatio: %d != %d",
 			penaltyBPS, bot.penaltyRatio)
 		return
 	}
 
-	sbchTimeLock := uint32(openLog.UnlockTime - openLog.CreatedTime)
+	sbchTimeLock := uint32(lockLog.UnlockTime - lockLog.CreatedTime)
 	if sbchTimeLock != bot.sbchTimeLock {
 		log.Infof("invalid TimeLock: %d != %d",
 			sbchTimeLock, bot.sbchTimeLock)
 		return
 	}
 
-	valSats := weiToSats(openLog.Value)
+	valSats := weiToSats(lockLog.Value)
 	if valSats < bot.minSwapVal ||
 		(bot.maxSwapVal > 0 && valSats > bot.maxSwapVal) {
 
@@ -701,10 +701,10 @@ func (bot *MarketMakerBot) handleSbchOpenEventS2B(ethLog gethtypes.Log) {
 		return
 	}
 
-	log.Info("got a sBCH Open log: ", toJSON(openLog))
+	log.Info("got a sBCH Lock log: ", toJSON(lockLog))
 	bchTimeLock := sbchTimeLockToBlocks(sbchTimeLock) / 2
 	covenant, err := htlcbch.NewMainnetCovenant(bot.bchPkh,
-		openLog.BchRecipientPkh[:], openLog.HashLock[:], bchTimeLock, 0)
+		lockLog.BchRecipientPkh[:], lockLog.HashLock[:], bchTimeLock, 0)
 	if err != nil {
 		log.Error("failed to create HTLC covenant: ", err)
 		return
@@ -717,12 +717,12 @@ func (bot *MarketMakerBot) handleSbchOpenEventS2B(ethLog gethtypes.Log) {
 	}
 
 	err = bot.db.addSbch2BchRecord(&Sbch2BchRecord{
-		SbchLockTime:    openLog.CreatedTime,
+		SbchLockTime:    lockLog.CreatedTime,
 		SbchLockTxHash:  toHex(ethLog.TxHash[:]),
 		Value:           valSats,
-		SbchSenderAddr:  toHex(openLog.LockerAddr[:]),
-		BchRecipientPkh: toHex(openLog.BchRecipientPkh[:]),
-		HashLock:        toHex(openLog.HashLock[:]),
+		SbchSenderAddr:  toHex(lockLog.LockerAddr[:]),
+		BchRecipientPkh: toHex(lockLog.BchRecipientPkh[:]),
+		HashLock:        toHex(lockLog.HashLock[:]),
 		TimeLock:        sbchTimeLock,
 		PenaltyBPS:      penaltyBPS,
 		HtlcScriptHash:  toHex(scriptHash),
@@ -733,27 +733,27 @@ func (bot *MarketMakerBot) handleSbchOpenEventS2B(ethLog gethtypes.Log) {
 }
 
 // bch2sbch record: New => SbchLocked
-func (bot *MarketMakerBot) handleSbchOpenEventB2S(ethLog gethtypes.Log) {
+func (bot *MarketMakerBot) handleSbchLockEventB2S(ethLog gethtypes.Log) {
 	if !bot.isSlaveMode {
 		return
 	}
 
-	openLog := htlcsbch.ParseHtlcOpenLog(ethLog)
-	if openLog == nil {
+	lockLog := htlcsbch.ParseHtlcLockLog(ethLog)
+	if lockLog == nil {
 		return
 	}
 
-	if openLog.LockerAddr != bot.sbchAddr {
+	if lockLog.LockerAddr != bot.sbchAddr {
 		log.Info("not opened by master",
-			", lockerAddr: ", openLog.LockerAddr.String(),
+			", lockerAddr: ", lockLog.LockerAddr.String(),
 			//", botAddr: ", bot.sbchAddr.String(),
 		)
 		return
 	}
 
-	log.Info("got a sBCH Open log (slave): ", toJSON(openLog))
+	log.Info("got a sBCH Lock log (slave): ", toJSON(lockLog))
 
-	record, err := bot.db.getBch2SbchRecordByHashLock(toHex(openLog.HashLock[:]))
+	record, err := bot.db.getBch2SbchRecordByHashLock(toHex(lockLog.HashLock[:]))
 	if err != nil {
 		log.Error("DB error:", err)
 		return

@@ -12,7 +12,7 @@ import (
 
 func TestABI(t *testing.T) {
 	require.Equal(t, "0xb7678aed94e863a9860243fb9eb49844e931081d24c64c79cd36f1763c5fbcc3",
-		OpenEventId.String())
+		LockEventId.String())
 	require.Equal(t, "0x3175e1e0b41583586838d3f2db12a22ab1b97413989a1e14f52bc748396ee957",
 		CloseEventId.String())
 	require.Equal(t, "0x3fbd469ec3a5ce074f975f76ce27e727ba21c99176917b97ae2e713695582a12",

@@ -571,7 +571,7 @@ const (
 
 var (
 	htlcAbi       abi.ABI
-	OpenEventId   common.Hash
+	LockEventId   common.Hash
 	CloseEventId  common.Hash
 	ExpireEventId common.Hash
 )
@@ -617,7 +617,7 @@ func init() {
 		panic("failed to parse HTLC EVM ABI")
 	}
 
-	OpenEventId = htlcAbi.Events["Lock"].ID
+	LockEventId = htlcAbi.Events["Lock"].ID
 	CloseEventId = htlcAbi.Events["Unlock"].ID
 	ExpireEventId = htlcAbi.Events["Refund"].ID
 }

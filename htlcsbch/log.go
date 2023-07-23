@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-type OpenLog struct {
+type LockLog struct {
 	LockerAddr      common.Address
 	UnlockerAddr    common.Address
 	HashLock        common.Hash
@@ -29,15 +29,15 @@ type ExpireLog struct {
 	HashLock common.Hash
 }
 
-func ParseHtlcOpenLog(log types.Log) *OpenLog {
+func ParseHtlcLockLog(log types.Log) *LockLog {
 	if len(log.Topics) != 3 ||
-		log.Topics[0] != OpenEventId ||
+		log.Topics[0] != LockEventId ||
 		len(log.Data) != 32*6 {
 		//log.Info("invalid topics or data")
 		return nil
 	}
 
-	return &OpenLog{
+	return &LockLog{
 		LockerAddr:      common.BytesToAddress(log.Topics[1][12:]),
 		UnlockerAddr:    common.BytesToAddress(log.Topics[2][12:]),
 		HashLock:        common.BytesToHash(log.Data[0:32]),

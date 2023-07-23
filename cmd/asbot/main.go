@@ -52,7 +52,7 @@ func main() {
 	flag.Uint64Var(&bchSendFeeRate, "bch-send-fee-rate", bchSendFeeRate, "miner fee rate of BCH HTLC sending tx (Sats/byte)")
 	flag.Uint64Var(&bchReceiveFeeRate, "bch-receive-fee-rate", bchReceiveFeeRate, "miner fee rate of BCH HTLC receiving tx (Sats/byte)")
 	flag.Uint64Var(&bchRefundFeeRate, "bch-refund-fee-rate", bchReceiveFeeRate, "miner fee rate of BCH HTLC refund tx (Sats/byte)")
-	flag.Uint64Var(&sbchOpenGas, "sbch-open-gas", sbchOpenGas, "gas limit of sBCH HTLC open tx")
+	flag.Uint64Var(&sbchOpenGas, "sbch-lock-gas", sbchOpenGas, "gas limit of sBCH HTLC lock tx")
 	flag.Uint64Var(&sbchCloseGas, "sbch-close-gas", sbchCloseGas, "gas limit of sBCH HTLC close tx")
 	flag.Uint64Var(&sbchExpireGas, "sbch-expire-gas", sbchExpireGas, "gas limit of sBCH HTLC expire tx")
 	flag.BoolVar(&debugMode, "debug", debugMode, "debug mode")

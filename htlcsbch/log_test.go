@@ -29,20 +29,20 @@ func TestParseHtlcOpenLog(t *testing.T) {
 	err := json.Unmarshal([]byte(logJson), &log)
 	require.NoError(t, err)
 
-	openLog := ParseHtlcOpenLog(log)
-	require.NotNil(t, openLog)
+	lockLog := ParseHtlcLockLog(log)
+	require.NotNil(t, lockLog)
 	require.Equal(t, "0xf29c9eF6496A482b94BDB45ABA93d661F082922C",
-		openLog.LockerAddr.String())
+		lockLog.LockerAddr.String())
 	require.Equal(t, "0x60d8666337C854686F2CF8A49B777c223b72fe34",
-		openLog.UnlockerAddr.String())
+		lockLog.UnlockerAddr.String())
 	require.Equal(t, "0x064fc464aa4a83786e72727b4be4790176600ab1c29f63be8a4333d13bc4da33",
-		openLog.HashLock.String())
-	require.Equal(t, uint64(1682072052), openLog.UnlockTime)
-	require.Equal(t, uint64(100000000000000), openLog.Value.Uint64())
+		lockLog.HashLock.String())
+	require.Equal(t, uint64(1682072052), lockLog.UnlockTime)
+	require.Equal(t, uint64(100000000000000), lockLog.Value.Uint64())
 	require.Equal(t, "0x6a47EDfbcBEeB8e61d20351dD3b0305454395AB5",
-		openLog.BchRecipientPkh.String())
-	require.Equal(t, uint64(1682071972), openLog.CreatedTime)
-	require.Equal(t, uint16(0x345), openLog.PenaltyBPS)
+		lockLog.BchRecipientPkh.String())
+	require.Equal(t, uint64(1682071972), lockLog.CreatedTime)
+	require.Equal(t, uint16(0x345), lockLog.PenaltyBPS)
 }
 
 func TestParseHtlcCloseLog(t *testing.T) {
