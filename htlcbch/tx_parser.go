@@ -139,7 +139,7 @@ func GetHtlcUnlocksInfo(block *wire.MsgBlock) (receipts []*HtlcUnlockInfo) {
 }
 
 func isHtlcUnlockTx(tx *wire.MsgTx) *HtlcUnlockInfo {
-	if len(tx.TxIn) != 1 && len(tx.TxIn) != 2 {
+	if len(tx.TxIn) != 1 {
 		return nil
 	}
 	sigScript := tx.TxIn[0].SignatureScript
