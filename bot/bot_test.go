@@ -517,7 +517,7 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 	}))
 
 	_sbchCli := newMockSbchClient(457, 999, _sbchNow)
-	_sbchCli.txTimes[toHex(_sbchLockTxHash)] = _sbchLockTxTime
+	_sbchCli.txTimes[gethcmn.BytesToHash(_sbchLockTxHash)] = _sbchLockTxTime
 	_bot := &MarketMakerBot{
 		db:      _db,
 		sbchCli: _sbchCli,
@@ -556,6 +556,7 @@ func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 	_scriptHash := gethAddrBytes("htlc")
 
 	_sbchLockTxHash := gethHash32("sbchlocktx")
+	_sbchLockTxTime := uint64(1234567890)
 	_botEvmAddr := gethAddr("botevm")
 	_userBchPkh := gethAddrBytes("ubch")
 	_createdAt := int64ToBytes32(987600000)
@@ -576,6 +577,7 @@ func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 	}))
 
 	_sbchCli := newMockSbchClient(457, 999, 0)
+	_sbchCli.txTimes[_sbchLockTxHash] = _sbchLockTxTime
 	_sbchCli.logs[459] = []gethtypes.Log{
 		{
 			BlockNumber: 459,
@@ -625,7 +627,7 @@ func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 	require.Equal(t, "", record0.BchUnlockTxHash)
 	require.Equal(t, Bch2SbchStatusSbchLocked, record0.Status)
 	require.Equal(t, toHex(_sbchLockTxHash[:]), record0.SbchLockTxHash)
-	require.Greater(t, record0.SbchLockTxTime, uint64(0))
+	require.Equal(t, _sbchLockTxTime, record0.SbchLockTxTime)
 }
 
 func TestSbch2Bch_userLockSbch(t *testing.T) {

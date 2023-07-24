@@ -763,7 +763,13 @@ func (bot *MarketMakerBot) handleSbchLockEventB2S(ethLog gethtypes.Log) {
 		return
 	}
 
-	record.UpdateStatusToSbchLocked(toHex(ethLog.TxHash[:]), uint64(time.Now().Unix()))
+	txTime, err := bot.sbchCli.getTxTime(ethLog.TxHash)
+	if err != nil {
+		log.Error("RPC error, failed to get sBCH tx time:", err)
+		txTime = uint64(time.Now().Unix())
+	}
+
+	record.UpdateStatusToSbchLocked(toHex(ethLog.TxHash[:]), txTime)
 	err = bot.db.updateBch2SbchRecord(record)
 	if err != nil {
 		log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
@@ -782,9 +788,7 @@ func (bot *MarketMakerBot) handleSbchUnlockEvent(ethLog gethtypes.Log) {
 	record, err := bot.db.getBch2SbchRecordByHashLock(hashLock)
 	//log.Info(record)
 	if err != nil {
-		// TODO: change to log.Info
-		log.Error(fmt.Errorf("DB error, can not get Bch2SbchRecord, hashLock=%s, err=%w",
-			hashLock, err))
+		log.Infof("can not get Bch2SbchRecord, hashLock=%s", hashLock)
 		return
 	}
 
@@ -863,7 +867,14 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 		log.Info("lock sBCH successful",
 			", hashLock: ", record.HashLock,
 			", txHash: ", txHash.String())
-		record.UpdateStatusToSbchLocked(toHex(txHash[:]), uint64(time.Now().Unix()))
+
+		txTime, err := bot.sbchCli.getTxTime(*txHash)
+		if err != nil {
+			log.Error("RPC error, failed to get sBCH tx time:", err)
+			txTime = uint64(time.Now().Unix())
+		}
+
+		record.UpdateStatusToSbchLocked(toHex(txHash[:]), txTime)
 		err = bot.db.updateBch2SbchRecord(record)
 		if err != nil {
 			log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
@@ -1200,7 +1211,6 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 func (bot *MarketMakerBot) refundLockedSbch() {
 	log.Info("handle sBCH refunds ...")
 
-	// TODO: order by SbchLockTxTime ASC
 	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusSbchLocked, 100)
 	if err != nil {
 		log.Error("DB error, failed to get BCH2SBCH records: ", err)
@@ -1212,29 +1222,19 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 		return
 	}
 
-	localNow := time.Now().Unix()
 	sbchNow, err := bot.sbchCli.getBlockTimeLatest()
 	if err != nil {
 		log.Error("RPC error, failed to get sBCH time: ", err)
 		return
 	}
-	log.Info("localNow: ", localNow, ", sbchNow: ", sbchNow)
+	log.Info("sbchNow: ", sbchNow)
 
 	for _, record := range records {
 		log.Info("record: ", record.ID,
 			" , SbchLockTxHash: ", record.SbchLockTxHash,
 			" , SbchLockTxTime: ", record.SbchLockTxTime)
+		txTime := record.SbchLockTxTime
 		sbchTimeLock := bchTimeLockToSeconds(record.TimeLock) / 2
-		if uint64(localNow) < record.SbchLockTxTime+uint64(sbchTimeLock) {
-			continue
-		}
-
-		txTime, err := bot.sbchCli.getTxTime(record.SbchLockTxHash)
-		if err != nil {
-			log.Error("RPC error, failed to get tx time: ", err)
-			continue
-		}
-
 		unlockableTime := txTime + uint64(sbchTimeLock)
 		if bot.isSlaveMode {
 			// give master some time to handle it

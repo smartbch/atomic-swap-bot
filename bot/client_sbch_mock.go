@@ -15,7 +15,7 @@ type MockSbchClient struct {
 	hFrom   uint64
 	hTo     uint64
 	logs    map[uint64][]types.Log
-	txTimes map[string]uint64
+	txTimes map[common.Hash]uint64
 }
 
 func newMockSbchClient(hFrom, hTo, ts uint64) *MockSbchClient {
@@ -24,7 +24,7 @@ func newMockSbchClient(hFrom, hTo, ts uint64) *MockSbchClient {
 		hFrom:   hFrom,
 		hTo:     hTo,
 		logs:    map[uint64][]types.Log{},
-		txTimes: map[string]uint64{},
+		txTimes: map[common.Hash]uint64{},
 	}
 	return cli
 }
@@ -37,7 +37,7 @@ func (c *MockSbchClient) getBlockTimeLatest() (uint64, error) {
 	return c.ts, nil
 }
 
-func (c *MockSbchClient) getTxTime(txHash string) (uint64, error) {
+func (c *MockSbchClient) getTxTime(txHash common.Hash) (uint64, error) {
 	return c.txTimes[txHash], nil
 }
 

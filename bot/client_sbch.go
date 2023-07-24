@@ -33,7 +33,7 @@ var _ ISbchClient = (*SbchClient)(nil)
 type ISbchClient interface {
 	getBlockNumber() (uint64, error)
 	getBlockTimeLatest() (uint64, error)
-	getTxTime(txHash string) (uint64, error)
+	getTxTime(txHash common.Hash) (uint64, error)
 	getHtlcLogs(fromBlock, toBlock uint64) ([]types.Log, error)
 	lockSbchToHtlc(userEvmAddr common.Address, hashLock common.Hash, timeLock uint32, amt *big.Int) (*common.Hash, error)
 	unlockSbchFromHtlc(hashLock common.Hash, secret common.Hash) (*common.Hash, error)
@@ -96,11 +96,11 @@ func (c *SbchClient) getBlockTimeLatest() (uint64, error) {
 	return header.Time, nil
 }
 
-func (c *SbchClient) getTxTime(txHash string) (uint64, error) {
+func (c *SbchClient) getTxTime(txHash common.Hash) (uint64, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), c.timeout)
 	defer cancelFn()
 
-	tr, err := c.client.TransactionReceipt(ctx, common.HexToHash(txHash))
+	tr, err := c.client.TransactionReceipt(ctx, txHash)
 	if err != nil {
 		return 0, err
 	}
