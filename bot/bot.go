@@ -863,9 +863,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 		log.Info("lock sBCH successful",
 			", hashLock: ", record.HashLock,
 			", txHash: ", txHash.String())
-		record.Status = Bch2SbchStatusSbchLocked
-		record.SbchLockTxHash = toHex(txHash[:])
-		record.SbchLockTxTime = uint64(time.Now().Unix())
+		record.UpdateStatusToSbchLocked(toHex(txHash[:]), uint64(time.Now().Unix()))
 		err = bot.db.updateBch2SbchRecord(record)
 		if err != nil {
 			log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
