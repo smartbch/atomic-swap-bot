@@ -14,7 +14,7 @@ const (
 	protoID = "SBAS" // SmartBCH AtomicSwap
 )
 
-type HtlcDepositInfo struct {
+type HtlcLockInfo struct {
 	//BlockNum      uint64
 	TxHash        string        // 32 bytes, hex
 	RecipientPkh  hexutil.Bytes // 20 bytes
@@ -27,17 +27,17 @@ type HtlcDepositInfo struct {
 	Value         uint64        // in sats
 }
 
-type HtlcReceiptInfo struct {
+type HtlcUnlockInfo struct {
 	PrevTxHash string // 32 bytes, hex
 	TxHash     string // 32 bytes, hex
 	Secret     string // 32 bytes, hex
 }
 
-// === Deposit ===
+// === Lock ===
 
-func GetHtlcDeposits(block *wire.MsgBlock) (deposits []*HtlcDepositInfo) {
+func GetHtlcLocksInfo(block *wire.MsgBlock) (deposits []*HtlcLockInfo) {
 	for _, tx := range block.Transactions {
-		depositInfo := isHtlcDepositTx(tx)
+		depositInfo := isHtlcLockTx(tx)
 		if depositInfo != nil {
 			deposits = append(deposits, depositInfo)
 		}
@@ -46,7 +46,7 @@ func GetHtlcDeposits(block *wire.MsgBlock) (deposits []*HtlcDepositInfo) {
 }
 
 // output#0: deposit, output#1: op_return
-func isHtlcDepositTx(tx *wire.MsgTx) *HtlcDepositInfo {
+func isHtlcLockTx(tx *wire.MsgTx) *HtlcLockInfo {
 	if len(tx.TxOut) < 2 {
 		return nil
 	}
@@ -58,7 +58,7 @@ func isHtlcDepositTx(tx *wire.MsgTx) *HtlcDepositInfo {
 	}
 
 	// output#1 must be NULL DATA that contains the HTLC info
-	depositInfo := getHtlcDepositInfo(tx.TxOut[1].PkScript)
+	depositInfo := getHtlcLockInfo(tx.TxOut[1].PkScript)
 	if depositInfo == nil {
 		return nil
 	}
@@ -85,7 +85,7 @@ func isHtlcDepositTx(tx *wire.MsgTx) *HtlcDepositInfo {
 
 // https://github.com/bitcoincashorg/bitcoincash.org/blob/master/spec/op_return-prefix-guideline.md
 // OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address>
-func getHtlcDepositInfo(pkScript []byte) *HtlcDepositInfo {
+func getHtlcLockInfo(pkScript []byte) *HtlcLockInfo {
 	if len(pkScript) == 0 ||
 		pkScript[0] != txscript.OP_RETURN {
 		return nil
@@ -105,7 +105,7 @@ func getHtlcDepositInfo(pkScript []byte) *HtlcDepositInfo {
 		return nil
 	}
 
-	return &HtlcDepositInfo{
+	return &HtlcLockInfo{
 		RecipientPkh:  retData[1],
 		SenderPkh:     retData[2],
 		HashLock:      retData[3],
@@ -126,11 +126,11 @@ func getP2SHash(pkScript []byte) (scriptHash []byte) {
 	return pkScript[2:22]
 }
 
-// === Receipt ===
+// === Unlock ===
 
-func GetHtlcReceipts(block *wire.MsgBlock) (receipts []*HtlcReceiptInfo) {
+func GetHtlcUnlocksInfo(block *wire.MsgBlock) (receipts []*HtlcUnlockInfo) {
 	for _, tx := range block.Transactions {
-		receiptInfo := isHtlcReceiptTx(tx)
+		receiptInfo := isHtlcUnlockTx(tx)
 		if receiptInfo != nil {
 			receipts = append(receipts, receiptInfo)
 		}
@@ -138,12 +138,12 @@ func GetHtlcReceipts(block *wire.MsgBlock) (receipts []*HtlcReceiptInfo) {
 	return
 }
 
-func isHtlcReceiptTx(tx *wire.MsgTx) *HtlcReceiptInfo {
+func isHtlcUnlockTx(tx *wire.MsgTx) *HtlcUnlockInfo {
 	if len(tx.TxIn) != 1 && len(tx.TxIn) != 2 {
 		return nil
 	}
 	sigScript := tx.TxIn[0].SignatureScript
-	receiptInfo := getHtlcReceiptInfo(sigScript)
+	receiptInfo := getHtlcUnlockInfo(sigScript)
 	if receiptInfo != nil {
 		receiptInfo.PrevTxHash = tx.TxIn[0].PreviousOutPoint.Hash.String()
 		receiptInfo.TxHash = tx.TxHash().String()
@@ -151,7 +151,7 @@ func isHtlcReceiptTx(tx *wire.MsgTx) *HtlcReceiptInfo {
 	return receiptInfo
 }
 
-func getHtlcReceiptInfo(sigScript []byte) *HtlcReceiptInfo {
+func getHtlcUnlockInfo(sigScript []byte) *HtlcUnlockInfo {
 	if !bytes.HasSuffix(sigScript, redeemScriptWithoutConstructorArgs) {
 		return nil
 	}
@@ -166,7 +166,7 @@ func getHtlcReceiptInfo(sigScript []byte) *HtlcReceiptInfo {
 		return nil
 	}
 
-	return &HtlcReceiptInfo{
+	return &HtlcUnlockInfo{
 		Secret: hex.EncodeToString(pushes[0]),
 	}
 

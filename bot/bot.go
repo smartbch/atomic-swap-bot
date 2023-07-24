@@ -475,7 +475,7 @@ func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 
 // find and handle BCH lock txs
 func (bot *MarketMakerBot) handleBchDepositTxs(h uint64, block *wire.MsgBlock) {
-	deposits := htlcbch.GetHtlcDeposits(block)
+	deposits := htlcbch.GetHtlcLocksInfo(block)
 	log.Info("HTLC deposits: ", len(deposits))
 	for _, deposit := range deposits {
 		log.Info("HTLC deposit: ", toJSON(deposit))
@@ -485,7 +485,7 @@ func (bot *MarketMakerBot) handleBchDepositTxs(h uint64, block *wire.MsgBlock) {
 }
 
 // create bch2sbch records (status=new)
-func (bot *MarketMakerBot) handleBchDepositTxB2S(h uint64, deposit *htlcbch.HtlcDepositInfo) {
+func (bot *MarketMakerBot) handleBchDepositTxB2S(h uint64, deposit *htlcbch.HtlcLockInfo) {
 	log.Info("handleBchDepositTxB2S")
 	if !bytes.Equal(deposit.RecipientPkh, bot.bchPkh) {
 		log.Info("not send to me, recipientPkh: ",
@@ -528,7 +528,7 @@ func (bot *MarketMakerBot) handleBchDepositTxB2S(h uint64, deposit *htlcbch.Htlc
 }
 
 // for sbch2bch record, change status from New to BchLocked
-func (bot *MarketMakerBot) handleBchDepositTxS2B(h uint64, deposit *htlcbch.HtlcDepositInfo) {
+func (bot *MarketMakerBot) handleBchDepositTxS2B(h uint64, deposit *htlcbch.HtlcLockInfo) {
 	if !bot.isSlaveMode {
 		return
 	}
@@ -558,7 +558,7 @@ func (bot *MarketMakerBot) handleBchDepositTxS2B(h uint64, deposit *htlcbch.Htlc
 
 // find and handle BCH unlock txs
 func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
-	receipts := htlcbch.GetHtlcReceipts(block)
+	receipts := htlcbch.GetHtlcUnlocksInfo(block)
 	log.Info("HTLC receipts: ", len(receipts))
 	for _, receipt := range receipts {
 		log.Info("HTLC receipt:", toJSON(receipt))
@@ -567,7 +567,7 @@ func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
 }
 
 // for sbch2bch records, change status from BchLocked to SecretRevealed
-func (bot *MarketMakerBot) handleBchReceiptTx(receipt *htlcbch.HtlcReceiptInfo) {
+func (bot *MarketMakerBot) handleBchReceiptTx(receipt *htlcbch.HtlcUnlockInfo) {
 	log.Info("handleBchReceiptTx")
 	record, err := bot.db.getSbch2BchRecordByBchLockTxHash(receipt.PrevTxHash)
 	if err != nil {
