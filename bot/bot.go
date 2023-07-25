@@ -210,6 +210,7 @@ type MarketMakerBot struct {
 	bchSendMinerFeeRate    uint64 // sats/byte
 	bchReceiveMinerFeeRate uint64 // sats/byte
 	bchRefundMinerFeeRate  uint64 // sats/byte
+	dbQueryLimit           int
 	isSlaveMode            bool
 	lazyMaster             bool // debug only
 }
@@ -224,6 +225,7 @@ func NewBot(
 	bchConfirmations uint8,
 	bchSendMinerFeeRate, bchReceiveMinerFeeRate, bchRefundMinerFeeRate uint64,
 	sbchLockGasLimit, sbchUnlockGasLimit, sbchRefundGasLimit uint64,
+	dbQueryLimit int,
 	debugMode bool,
 	slaveMode bool,
 	lazyMaster bool, // debug only
@@ -294,6 +296,7 @@ func NewBot(
 		bchReceiveMinerFeeRate: bchReceiveMinerFeeRate,
 		bchRefundMinerFeeRate:  bchRefundMinerFeeRate,
 		bchConfirmations:       bchConfirmations,
+		dbQueryLimit:           dbQueryLimit,
 		isSlaveMode:            slaveMode,
 		lazyMaster:             debugMode && lazyMaster,
 	}, nil
@@ -818,7 +821,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 	}
 
 	log.Info("handle BCH user deposits ...")
-	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
+	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, bot.dbQueryLimit)
 	if err != nil {
 		log.Error("DB error, failed to get BCH2SBCH records: ", err)
 		return
@@ -897,7 +900,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 	}
 	log.Info("last BCH height: ", lastBlockNum)
 
-	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusNew, 100)
+	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusNew, bot.dbQueryLimit)
 	if err != nil {
 		log.Error("DB error, failed to get unhandled sBCH user deposits: ", err)
 		return
@@ -995,7 +998,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 // bch2sbch records: SecretRevealed => BchUnlocked
 func (bot *MarketMakerBot) unlockBchUserDeposits() {
 	log.Info("unlock BCH user deposits ...")
-	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusSecretRevealed, 100)
+	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusSecretRevealed, bot.dbQueryLimit)
 	if err != nil {
 		log.Error("failed to get BCH2SBCH records from DB: ", err)
 		return
@@ -1070,7 +1073,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 // sbch2bch: SecretRevealed => SbchUnlocked
 func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 	log.Info("unlock sBCH user deposits ...")
-	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusSecretRevealed, 100)
+	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusSecretRevealed, bot.dbQueryLimit)
 	if err != nil {
 		log.Error("DB error, failed to get SBCH2BCH records from DB: ", err)
 		return
@@ -1128,7 +1131,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 
 	log.Info("handle BCH refunds ...")
 
-	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
+	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, bot.dbQueryLimit)
 	if err != nil {
 		log.Error("DB error, failed to get SBCH2BCH records: ", err)
 		return
@@ -1211,7 +1214,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 func (bot *MarketMakerBot) refundLockedSbch() {
 	log.Info("handle sBCH refunds ...")
 
-	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusSbchLocked, 100)
+	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusSbchLocked, bot.dbQueryLimit)
 	if err != nil {
 		log.Error("DB error, failed to get BCH2SBCH records: ", err)
 		return

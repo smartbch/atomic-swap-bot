@@ -33,6 +33,7 @@ var (
 	sbchUnlockGas     = uint64(500_000)
 	sbchRefundGas     = uint64(500_000)
 	bchConfirmations  = uint64(10)
+	dbQueryLimit      = uint64(100)
 	debugMode         = true
 	slaveMode         = false
 	lazyMaster        = false
@@ -55,6 +56,7 @@ func main() {
 	flag.Uint64Var(&sbchOpenGas, "sbch-lock-gas", sbchOpenGas, "gas limit of sBCH HTLC lock tx")
 	flag.Uint64Var(&sbchUnlockGas, "sbch-unlock-gas", sbchUnlockGas, "gas limit of sBCH HTLC unlock tx")
 	flag.Uint64Var(&sbchRefundGas, "sbch-refund-gas", sbchRefundGas, "gas limit of sBCH HTLC refund tx")
+	flag.Uint64Var(&dbQueryLimit, "db-query-limit", dbQueryLimit, "db query limit")
 	flag.BoolVar(&debugMode, "debug", debugMode, "debug mode")
 	flag.BoolVar(&slaveMode, "slave", slaveMode, "slave mode")
 	flag.BoolVar(&lazyMaster, "lazy-master", lazyMaster, "delay to send unlock|refund tx (debug mode only)")
@@ -73,6 +75,7 @@ func main() {
 		uint8(bchConfirmations),
 		bchSendFeeRate, bchReceiveFeeRate, bchRefundFeeRate,
 		sbchOpenGas, sbchUnlockGas, sbchRefundGas,
+		int(dbQueryLimit),
 		debugMode, slaveMode, lazyMaster,
 	)
 	if err != nil {

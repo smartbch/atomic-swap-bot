@@ -90,6 +90,7 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 
 	_bot := &MarketMakerBot{
 		db:           _db,
+		dbQueryLimit: 100,
 		bchCli:       _bchCli,
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       _botPkh,
@@ -189,6 +190,7 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 
 	_bot := &MarketMakerBot{
 		db:           _db,
+		dbQueryLimit: 100,
 		bchCli:       _bchCli,
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       testBchPkh,
@@ -236,6 +238,7 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 	_sbchCli := newMockSbchClient(457, 999, 0)
 	_bot := &MarketMakerBot{
 		db:              _db,
+		dbQueryLimit:    100,
 		bchCli:          _bchCli,
 		sbchCli:         _sbchCli,
 		bchPrivKey:      testBchPrivKey,
@@ -293,6 +296,7 @@ func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 	_bchCli := newMockBchClient(124, 130)
 	_bot := &MarketMakerBot{
 		db:               _db,
+		dbQueryLimit:     100,
 		bchCli:           _bchCli,
 		bchPrivKey:       testBchPrivKey,
 		bchPkh:           _botPkh,
@@ -332,11 +336,12 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 	_bchCli := newMockBchClient(134, 160)
 	_bchCli.confirmations[toHex(_txHash)] = 100
 	_bot := &MarketMakerBot{
-		db:          _db,
-		bchCli:      _bchCli,
-		bchPrivKey:  testBchPrivKey,
-		bchPkh:      _botPkh,
-		bchTimeLock: 72,
+		db:           _db,
+		dbQueryLimit: 100,
+		bchCli:       _bchCli,
+		bchPrivKey:   testBchPrivKey,
+		bchPkh:       _botPkh,
+		bchTimeLock:  72,
 	}
 	_bot.handleBchUserDeposits()
 
@@ -387,9 +392,10 @@ func TestBch2Sbch_userUnlockSbch(t *testing.T) {
 	}
 
 	_bot := &MarketMakerBot{
-		db:      _db,
-		sbchCli: _sbchCli,
-		bchPkh:  testBchPkh,
+		db:           _db,
+		dbQueryLimit: 100,
+		sbchCli:      _sbchCli,
+		bchPkh:       testBchPkh,
 	}
 
 	_bot.scanSbchEvents()
@@ -448,11 +454,12 @@ func TestBch2Sbch_botUnlockBch(t *testing.T) {
 	}))
 
 	_bot := &MarketMakerBot{
-		db:         _db,
-		bchCli:     &MockBchClient{},
-		bchPrivKey: testBchPrivKey,
-		bchPkh:     testBchPkh,
-		bchAddr:    testBchAddr,
+		db:           _db,
+		dbQueryLimit: 100,
+		bchCli:       &MockBchClient{},
+		bchPrivKey:   testBchPrivKey,
+		bchPkh:       testBchPkh,
+		bchAddr:      testBchAddr,
 	}
 	_bot.unlockBchUserDeposits()
 
@@ -519,9 +526,10 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 	_sbchCli := newMockSbchClient(457, 999, _sbchNow)
 	_sbchCli.txTimes[gethcmn.BytesToHash(_sbchLockTxHash)] = _sbchLockTxTime
 	_bot := &MarketMakerBot{
-		db:      _db,
-		sbchCli: _sbchCli,
-		bchPkh:  testBchPkh,
+		db:           _db,
+		dbQueryLimit: 100,
+		sbchCli:      _sbchCli,
+		bchPkh:       testBchPkh,
 	}
 
 	_bot.refundLockedSbch()
@@ -599,10 +607,11 @@ func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 	}
 
 	_bot := &MarketMakerBot{
-		db:          _db,
-		sbchCli:     _sbchCli,
-		sbchAddr:    _botEvmAddr,
-		isSlaveMode: true,
+		db:           _db,
+		dbQueryLimit: 100,
+		sbchCli:      _sbchCli,
+		sbchAddr:     _botEvmAddr,
+		isSlaveMode:  true,
 	}
 	_bot.handleSbchEvents(457, 500)
 
@@ -657,6 +666,7 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 	}
 	_bot := &MarketMakerBot{
 		db:           _db,
+		dbQueryLimit: 100,
 		sbchCli:      _sbchCli,
 		sbchAddr:     testEvmAddr,
 		bchPkh:       testBchPkh,
@@ -774,6 +784,7 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 	}
 	_bot := &MarketMakerBot{
 		db:           _db,
+		dbQueryLimit: 100,
 		sbchCli:      _sbchCli,
 		sbchAddr:     testEvmAddr,
 		bchPkh:       testBchPkh,
@@ -823,6 +834,7 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 	_sbchCli := newMockSbchClient(457, 500, _lockTime+60)
 	_bot := &MarketMakerBot{
 		db:           _db,
+		dbQueryLimit: 100,
 		bchCli:       _bchCli,
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       testBchPkh,
@@ -882,6 +894,7 @@ func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
 	_sbchCli := newMockSbchClient(457, 500, _lockTime+uint64(_timeLock/3)+1)
 	_bot := &MarketMakerBot{
 		db:           _db,
+		dbQueryLimit: 100,
 		bchCli:       _bchCli,
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       testBchPkh,
@@ -958,9 +971,10 @@ func TestSbch2Bch_userUnlockBch(t *testing.T) {
 	}
 
 	_bot := &MarketMakerBot{
-		db:     _db,
-		bchCli: _bchCli,
-		bchPkh: testBchPkh,
+		db:           _db,
+		dbQueryLimit: 100,
+		bchCli:       _bchCli,
+		bchPkh:       testBchPkh,
 	}
 
 	_bot.scanBchBlocks()
@@ -1016,8 +1030,9 @@ func TestSbch2Bch_botUnlockSbch(t *testing.T) {
 
 	_sbchCli := &MockSbchClient{}
 	_bot := &MarketMakerBot{
-		db:      _db,
-		sbchCli: _sbchCli,
+		db:           _db,
+		dbQueryLimit: 100,
+		sbchCli:      _sbchCli,
 	}
 
 	_bot.unlockSbchUserDeposits()
@@ -1082,11 +1097,12 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 	_bchCli.confirmations[_bchLockTxHash.String()] = 61
 
 	_bot := &MarketMakerBot{
-		db:         _db,
-		bchCli:     _bchCli,
-		bchPrivKey: testBchPrivKey,
-		bchPkh:     testBchPkh,
-		bchAddr:    testBchAddr,
+		db:           _db,
+		dbQueryLimit: 100,
+		bchCli:       _bchCli,
+		bchPrivKey:   testBchPrivKey,
+		bchPkh:       testBchPkh,
+		bchAddr:      testBchAddr,
 	}
 
 	_bot.refundLockedBCH(true)
@@ -1168,6 +1184,7 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 
 	_bot := &MarketMakerBot{
 		db:           _db,
+		dbQueryLimit: 100,
 		bchCli:       _bchCli,
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       testBchPkh,
