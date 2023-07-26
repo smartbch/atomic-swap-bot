@@ -125,16 +125,11 @@ ego run asbot \
 	--bch-rpc-url=http://user:pass@127.0.0.1:48334 \
 	--sbch-rpc-url=http://127.0.0.1:8545 \
 	--sbch-htlc-addr=0x3246D84c930794cDFAABBab954BAc58A7c08b4cd \
-	--sbch-gas-price=1.05 \
-	--bch-timelock=6 \
-	--penalty-ratio=500 \
-	--fee-ratio=100 \
-	--min-swap-val=0.01 \
-	--max-swap-val=10.0 \
 	--bch-confirmations=0 \
 	--bch-send-fee-rate=2 \
 	--bch-receive-fee-rate=2 \
 	--bch-refund-fee-rate=2 \
+	--sbch-gas-price=1.05 \
 	--sbch-open-gas=500000 \
 	--sbch-close-gas=500000 \
 	--sbch-expire-gas=500000
