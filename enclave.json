@@ -12,6 +12,12 @@
       "target": "/data",
       "type": "hostfs",
       "readOnly": false
+    },
+    {
+      "source": "/etc/ssl",
+      "target": "/etc/ssl",
+      "type": "hostfs",
+      "readOnly": true
     }
   ],
   "env": null,
