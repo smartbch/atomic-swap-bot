@@ -114,8 +114,8 @@ func readKeys() (bchWIF, sbchKey string) {
 	}
 	fmt.Println("The ecies pubkey:", hex.EncodeToString(eciesPrivKey.PublicKey.Bytes(true)))
 
-	bchWIF = readKey(eciesPrivKey, "BCH WIF (ASIC)")
-	sbchKey = readKey(eciesPrivKey, "sBCH Key (HEX)")
+	bchWIF = readKey(eciesPrivKey, "BCH WIF")
+	sbchKey = readKey(eciesPrivKey, "sBCH Key")
 	return
 }
 
