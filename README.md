@@ -101,12 +101,12 @@ go run github.com/smartbch/atomic-swap-bot/cmd/asbot \
 	--sbch-htlc-addr=0x3246D84c930794cDFAABBab954BAc58A7c08b4cd \
 	--sbch-gas-price=1.05 \
 	--bch-confirmations=0 \
-	--bch-send-fee-rate=2 \
-	--bch-receive-fee-rate=2 \
+	--bch-lock-fee-rate=2 \
+	--bch-unlock-fee-rate=2 \
 	--bch-refund-fee-rate=2 \
-	--sbch-open-gas=500000 \
-	--sbch-close-gas=500000 \
-	--sbch-expire-gas=500000
+	--sbch-lock-gas=500000 \
+	--sbch-unlock-gas=500000 \
+	--sbch-refund-gas=500000
 ```
 
 
@@ -126,13 +126,13 @@ ego run asbot \
 	--sbch-rpc-url=http://127.0.0.1:8545 \
 	--sbch-htlc-addr=0x3246D84c930794cDFAABBab954BAc58A7c08b4cd \
 	--bch-confirmations=0 \
-	--bch-send-fee-rate=2 \
-	--bch-receive-fee-rate=2 \
+	--bch-lock-fee-rate=2 \
+	--bch-unlock-fee-rate=2 \
 	--bch-refund-fee-rate=2 \
 	--sbch-gas-price=1.05 \
-	--sbch-open-gas=500000 \
-	--sbch-close-gas=500000 \
-	--sbch-expire-gas=500000
+	--sbch-lock-gas=500000 \
+	--sbch-unlock-gas=500000 \
+	--sbch-refund-gas=500000
 ```
 
 The above cmd prints something like this and wait inputs:

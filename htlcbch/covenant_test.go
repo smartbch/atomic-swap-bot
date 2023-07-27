@@ -77,7 +77,7 @@ func TestBuildReceiveUnlockingScript(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	script, err := c.BuildReceiveSigScript(testSecretKey)
+	script, err := c.BuildUnlockSigScript(testSecretKey)
 	require.NoError(t, err)
 	require.Equal(t, "203132330000000000000000000000000000000000000000000000000000000000004cd102f401012420ed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf3144d027fdd0585302264922bed58b8a84d38776ccb14a47165ef477c99a53cdeb846a7687a069d7df27c5579009c63c0009d567aa8537a880376a9147b7e0288ac7e00cd8800cc00c602d00794a2696d6d5167557a519dc0009d537ab27500c67600567900a06352795779950210279677527978947b757c0376a91455797e0288ac7e51cd788851cc5279a26975680376a914547a7e0288ac7e00cd8800cc7b02d00794a2696d6d755168",
 		hex.EncodeToString(script))
@@ -100,7 +100,7 @@ func TestBuildRefundUnlockingScript(t *testing.T) {
 		hex.EncodeToString(script))
 }
 
-func TestMakeReceiveTx(t *testing.T) {
+func TestMakeUnlockTx(t *testing.T) {
 	c, err := NewCovenant(
 		testSenderPkh,
 		testRecipientPkh,
@@ -110,7 +110,7 @@ func TestMakeReceiveTx(t *testing.T) {
 		&chaincfg.TestNet3Params,
 	)
 	require.NoError(t, err)
-	tx, err := c.MakeReceiveTx(
+	tx, err := c.MakeUnlockTx(
 		gethcmn.Hash{'u', 't', 'x', 'o'}.Bytes(),
 		1,
 		100000000,

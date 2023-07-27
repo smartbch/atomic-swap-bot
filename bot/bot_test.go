@@ -934,7 +934,7 @@ func TestSbch2Bch_userUnlockBch(t *testing.T) {
 	require.NoError(t, err)
 	_scriptHash, err := c.GetRedeemScriptHash()
 	require.NoError(t, err)
-	_sigScript, err := c.BuildReceiveSigScript(_secret)
+	_sigScript, err := c.BuildUnlockSigScript(_secret)
 	require.NoError(t, err)
 
 	_db := initDB(t, 123, 456)

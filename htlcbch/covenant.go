@@ -111,19 +111,19 @@ func (c *HtlcCovenant) GetP2SHAddress() (string, error) {
 	return c.net.CashAddressPrefix + ":" + addr.EncodeAddress(), nil
 }
 
-func (c *HtlcCovenant) MakeReceiveTx(
+func (c *HtlcCovenant) MakeUnlockTx(
 	txid []byte, vout uint32, inAmt int64, // input info
 	minerFeeRate uint64,
 	secret []byte,
 ) (*wire.MsgTx, error) {
 	// estimate miner fee
-	tx, err := c.makeReceiveTx(txid, vout, inAmt, secret, 1000)
+	tx, err := c.makeUnlockTx(txid, vout, inAmt, secret, 1000)
 	if err != nil {
 		return nil, err
 	}
 	// make tx
 	minerFee := int64(len(MsgTxToBytes(tx))) * int64(minerFeeRate)
-	return c.makeReceiveTx(txid, vout, inAmt, secret, minerFee)
+	return c.makeUnlockTx(txid, vout, inAmt, secret, minerFee)
 }
 
 func (c *HtlcCovenant) MakeRefundTx(
@@ -140,7 +140,7 @@ func (c *HtlcCovenant) MakeRefundTx(
 	return c.makeRefundTx(txid, vout, inAmt, minerFee)
 }
 
-func (c *HtlcCovenant) makeReceiveTx(
+func (c *HtlcCovenant) makeUnlockTx(
 	txid []byte, vout uint32, inAmt int64, // input info
 	secret []byte,
 	minerFee int64,
@@ -152,7 +152,7 @@ func (c *HtlcCovenant) makeReceiveTx(
 
 	seq := uint32(0)
 
-	sigScript, err := c.BuildReceiveSigScript(secret)
+	sigScript, err := c.BuildUnlockSigScript(secret)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func (c *HtlcCovenant) BuildFullRedeemScript() ([]byte, error) {
 		Script()
 }
 
-func (c *HtlcCovenant) BuildReceiveSigScript(secret []byte) ([]byte, error) {
+func (c *HtlcCovenant) BuildUnlockSigScript(secret []byte) ([]byte, error) {
 	redeemScript, err := c.BuildFullRedeemScript()
 	if err != nil {
 		return nil, err

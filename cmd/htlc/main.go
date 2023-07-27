@@ -174,7 +174,7 @@ func cmdUnlock() *cli.Command {
 			fmt.Println("hash lock:", hex.EncodeToString(hashLock))
 			fmt.Println("htlc p2sh:", hex.EncodeToString(cP2SH))
 
-			tx, err := c.MakeReceiveTx(txid, uint32(vout), int64(val), minerFeeRate, secret)
+			tx, err := c.MakeUnlockTx(txid, uint32(vout), int64(val), minerFeeRate, secret)
 			if err != nil {
 				return err
 			}

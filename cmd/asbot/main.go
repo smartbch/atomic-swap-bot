@@ -17,26 +17,26 @@ import (
 )
 
 var (
-	dbFile            = "bot.db"
-	bchPrivKeyWIF     = "" // only used for test
-	sbchPrivKeyHex    = "" // only used for test
-	bchMasterAddr     = "" // only in slave mode
-	sbchMasterAddr    = "" // only in slave mode
-	bchRpcUrl         = "https://user:pass@localhost:8333"
-	sbchRpcUrl        = "https://localhost:8545"
-	sbchHtlcAddr      = "0x"
-	sbchGasPrice      = 1.05
-	bchSendFeeRate    = uint64(2) // sats/byte
-	bchReceiveFeeRate = uint64(2) // sats/byte
-	bchRefundFeeRate  = uint64(2) // sats/byte
-	sbchOpenGas       = uint64(500_000)
-	sbchUnlockGas     = uint64(500_000)
-	sbchRefundGas     = uint64(500_000)
-	bchConfirmations  = uint64(10)
-	dbQueryLimit      = uint64(100)
-	debugMode         = true
-	slaveMode         = false
-	lazyMaster        = false
+	dbFile           = "bot.db"
+	bchPrivKeyWIF    = "" // only used for test
+	sbchPrivKeyHex   = "" // only used for test
+	bchMasterAddr    = "" // only in slave mode
+	sbchMasterAddr   = "" // only in slave mode
+	bchRpcUrl        = "https://user:pass@localhost:8333"
+	sbchRpcUrl       = "https://localhost:8545"
+	sbchHtlcAddr     = "0x"
+	sbchGasPrice     = 1.05
+	bchLockFeeRate   = uint64(2) // sats/byte
+	bchUnlockFeeRate = uint64(2) // sats/byte
+	bchRefundFeeRate = uint64(2) // sats/byte
+	sbchLuckGas      = uint64(500_000)
+	sbchUnlockGas    = uint64(500_000)
+	sbchRefundGas    = uint64(500_000)
+	bchConfirmations = uint64(10)
+	dbQueryLimit     = uint64(100)
+	debugMode        = true
+	slaveMode        = false
+	lazyMaster       = false
 )
 
 func main() {
@@ -50,10 +50,10 @@ func main() {
 	flag.StringVar(&sbchHtlcAddr, "sbch-htlc-addr", sbchHtlcAddr, "sBCH HTLC contract address")
 	flag.Float64Var(&sbchGasPrice, "sbch-gas-price", sbchGasPrice, "sBCH gas price (in Gwei)")
 	flag.Uint64Var(&bchConfirmations, "bch-confirmations", bchConfirmations, "required confirmations of BCH tx ")
-	flag.Uint64Var(&bchSendFeeRate, "bch-send-fee-rate", bchSendFeeRate, "miner fee rate of BCH HTLC sending tx (Sats/byte)")
-	flag.Uint64Var(&bchReceiveFeeRate, "bch-receive-fee-rate", bchReceiveFeeRate, "miner fee rate of BCH HTLC receiving tx (Sats/byte)")
-	flag.Uint64Var(&bchRefundFeeRate, "bch-refund-fee-rate", bchReceiveFeeRate, "miner fee rate of BCH HTLC refund tx (Sats/byte)")
-	flag.Uint64Var(&sbchOpenGas, "sbch-lock-gas", sbchOpenGas, "gas limit of sBCH HTLC lock tx")
+	flag.Uint64Var(&bchLockFeeRate, "bch-lock-fee-rate", bchLockFeeRate, "miner fee rate of BCH HTLC lock tx (Sats/byte)")
+	flag.Uint64Var(&bchUnlockFeeRate, "bch-unlock-fee-rate", bchUnlockFeeRate, "miner fee rate of BCH HTLC unlock tx (Sats/byte)")
+	flag.Uint64Var(&bchRefundFeeRate, "bch-refund-fee-rate", bchUnlockFeeRate, "miner fee rate of BCH HTLC refund tx (Sats/byte)")
+	flag.Uint64Var(&sbchLuckGas, "sbch-lock-gas", sbchLuckGas, "gas limit of sBCH HTLC lock tx")
 	flag.Uint64Var(&sbchUnlockGas, "sbch-unlock-gas", sbchUnlockGas, "gas limit of sBCH HTLC unlock tx")
 	flag.Uint64Var(&sbchRefundGas, "sbch-refund-gas", sbchRefundGas, "gas limit of sBCH HTLC refund tx")
 	flag.Uint64Var(&dbQueryLimit, "db-query-limit", dbQueryLimit, "db query limit")
@@ -73,8 +73,8 @@ func main() {
 		bchMasterAddr, sbchMasterAddr,
 		bchRpcUrl, sbchRpcUrl, _sbchHtlcAddr, _sbchGasPrice,
 		uint8(bchConfirmations),
-		bchSendFeeRate, bchReceiveFeeRate, bchRefundFeeRate,
-		sbchOpenGas, sbchUnlockGas, sbchRefundGas,
+		bchLockFeeRate, bchUnlockFeeRate, bchRefundFeeRate,
+		sbchLuckGas, sbchUnlockGas, sbchRefundGas,
 		int(dbQueryLimit),
 		debugMode, slaveMode, lazyMaster,
 	)

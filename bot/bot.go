@@ -203,16 +203,16 @@ type MarketMakerBot struct {
 	penaltyRatio uint16 // in BPS
 
 	// bot params
-	serviceFeeRatio        uint16 // in BPS
-	minSwapVal             uint64 // in sats
-	maxSwapVal             uint64 // in sats
-	bchConfirmations       uint8
-	bchSendMinerFeeRate    uint64 // sats/byte
-	bchReceiveMinerFeeRate uint64 // sats/byte
-	bchRefundMinerFeeRate  uint64 // sats/byte
-	dbQueryLimit           int
-	isSlaveMode            bool
-	lazyMaster             bool // debug only
+	serviceFeeRatio       uint16 // in BPS
+	minSwapVal            uint64 // in sats
+	maxSwapVal            uint64 // in sats
+	bchConfirmations      uint8
+	bchLockMinerFeeRate   uint64 // sats/byte
+	bchUnlockMinerFeeRate uint64 // sats/byte
+	bchRefundMinerFeeRate uint64 // sats/byte
+	dbQueryLimit          int
+	isSlaveMode           bool
+	lazyMaster            bool // debug only
 }
 
 func NewBot(
@@ -223,7 +223,7 @@ func NewBot(
 	sbchHtlcAddr gethcmn.Address,
 	sbchGasPrice *big.Int,
 	bchConfirmations uint8,
-	bchSendMinerFeeRate, bchReceiveMinerFeeRate, bchRefundMinerFeeRate uint64,
+	bchLockMinerFeeRate, bchUnlockMinerFeeRate, bchRefundMinerFeeRate uint64,
 	sbchLockGasLimit, sbchUnlockGasLimit, sbchRefundGasLimit uint64,
 	dbQueryLimit int,
 	debugMode bool,
@@ -278,27 +278,27 @@ func NewBot(
 	log.Info("sBCH address: ", sbchAddr.String())
 
 	return &MarketMakerBot{
-		db:                     db,
-		bchCli:                 bchCli,
-		bchPrivKey:             bchPrivKey,
-		bchPkh:                 bchPkh,
-		bchAddr:                bchAddr,
-		sbchCli:                sbchCli,
-		sbchPrivKey:            sbchPrivKey,
-		sbchAddr:               sbchAddr,
-		bchTimeLock:            botInfo.BchLockTime,
-		sbchTimeLock:           botInfo.SbchLockTime,
-		penaltyRatio:           botInfo.PenaltyBPS,
-		serviceFeeRatio:        botInfo.FeeBPS,
-		minSwapVal:             weiToSats(botInfo.MinSwapAmt),
-		maxSwapVal:             weiToSats(botInfo.MaxSwapAmt),
-		bchSendMinerFeeRate:    bchSendMinerFeeRate,
-		bchReceiveMinerFeeRate: bchReceiveMinerFeeRate,
-		bchRefundMinerFeeRate:  bchRefundMinerFeeRate,
-		bchConfirmations:       bchConfirmations,
-		dbQueryLimit:           dbQueryLimit,
-		isSlaveMode:            slaveMode,
-		lazyMaster:             debugMode && lazyMaster,
+		db:                    db,
+		bchCli:                bchCli,
+		bchPrivKey:            bchPrivKey,
+		bchPkh:                bchPkh,
+		bchAddr:               bchAddr,
+		sbchCli:               sbchCli,
+		sbchPrivKey:           sbchPrivKey,
+		sbchAddr:              sbchAddr,
+		bchTimeLock:           botInfo.BchLockTime,
+		sbchTimeLock:          botInfo.SbchLockTime,
+		penaltyRatio:          botInfo.PenaltyBPS,
+		serviceFeeRatio:       botInfo.FeeBPS,
+		minSwapVal:            weiToSats(botInfo.MinSwapAmt),
+		maxSwapVal:            weiToSats(botInfo.MaxSwapAmt),
+		bchLockMinerFeeRate:   bchLockMinerFeeRate,
+		bchUnlockMinerFeeRate: bchUnlockMinerFeeRate,
+		bchRefundMinerFeeRate: bchRefundMinerFeeRate,
+		bchConfirmations:      bchConfirmations,
+		dbQueryLimit:          dbQueryLimit,
+		isSlaveMode:           slaveMode,
+		lazyMaster:            debugMode && lazyMaster,
 	}, nil
 }
 
@@ -967,7 +967,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 			bot.bchPrivKey,
 			inputs,
 			bchValMinusFee,
-			bot.bchSendMinerFeeRate,
+			bot.bchLockMinerFeeRate,
 		)
 		if err != nil {
 			log.Error("failed to create BCH tx: ", err)
@@ -1036,11 +1036,11 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 		p2shAddr, _ := covenant.GetP2SHAddress()
 		log.Info("covenant: ", p2shAddr)
 
-		tx, err := covenant.MakeReceiveTx(
+		tx, err := covenant.MakeUnlockTx(
 			gethcmn.FromHex(record.BchLockTxHash),
 			0,
 			int64(record.Value),
-			bot.bchReceiveMinerFeeRate,
+			bot.bchUnlockMinerFeeRate,
 			gethcmn.FromHex(record.Secret),
 		)
 		if err != nil {
