@@ -63,7 +63,7 @@ func main() {
 	flag.Parse()
 
 	if (!slaveMode && bchPrivKeyWIF == "") || sbchPrivKeyHex == "" || !debugMode {
-		bchPrivKeyWIF, sbchPrivKeyHex = readKeys()
+		bchPrivKeyWIF, sbchPrivKeyHex = readKeys(slaveMode)
 	}
 
 	_sbchHtlcAddr := gethcmn.HexToAddress(sbchHtlcAddr)
@@ -107,14 +107,19 @@ func printUTXOs(utxos []btcjson.ListUnspentResult) {
 	table.Render() // Send output
 }
 
-func readKeys() (bchWIF, sbchKey string) {
+func readKeys(slaveMode bool) (bchWIF, sbchKey string) {
 	eciesPrivKey, err := goecies.GenerateKey()
 	if err != nil {
 		log.Fatal("failed to gen ecies key: ", err)
 	}
-	fmt.Println("The ecies pubkey:", hex.EncodeToString(eciesPrivKey.PublicKey.Bytes(true)))
+	fmt.Println("The ecies pubkey:",
+		hex.EncodeToString(eciesPrivKey.PublicKey.Bytes(true)))
 
-	bchWIF = readKey(eciesPrivKey, "BCH WIF")
+	if !slaveMode {
+		// BCH key is only used by master bot
+		bchWIF = readKey(eciesPrivKey, "BCH WIF")
+	}
+	// sBCH key is used by both master and slave bots
 	sbchKey = readKey(eciesPrivKey, "sBCH Key")
 	return
 }
