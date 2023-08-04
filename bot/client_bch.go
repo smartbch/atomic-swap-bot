@@ -12,6 +12,8 @@ import (
 	"github.com/gcash/bchd/rpcclient"
 	"github.com/gcash/bchd/wire"
 	"github.com/gcash/bchutil"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type IBchClient interface {
@@ -115,7 +117,10 @@ func findUTXOs(allUTXOs []btcjson.ListUnspentResult,
 	if totalAmt >= minVal && len(utxos) <= int(maxCount) {
 		return utxos, nil
 	}
-	return nil, fmt.Errorf("no available UTXOs (minVal: %d sats)", minVal)
+
+	log.Info("allUTXOs:", toJSON(allUTXOs))
+	return nil, fmt.Errorf(
+		"no available UTXOs (minVal: %d sats, maxCount: %d)", minVal, maxCount)
 }
 
 func (c *BchClient) getTxConfirmations(txHashHex string) (int64, error) {
