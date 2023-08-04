@@ -18,7 +18,7 @@ import (
 
 type IBchClient interface {
 	getBlockCount() (int64, error)
-	getBlock(height int64) (*wire.MsgBlock, error)
+	getBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error)
 	getUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentResult, error)
 	getAllUTXOs() ([]btcjson.ListUnspentResult, error)
 	getTxConfirmations(txHashHex string) (int64, error)
@@ -57,12 +57,12 @@ func (c *BchClient) getBlockCount() (int64, error) {
 	return c.client.GetBlockCount()
 }
 
-func (c *BchClient) getBlock(height int64) (*wire.MsgBlock, error) {
+func (c *BchClient) getBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error) {
 	blockHash, err := c.client.GetBlockHash(height)
 	if err != nil {
 		return nil, nil
 	}
-	block, err := c.client.GetBlock(blockHash)
+	block, err := c.client.GetBlockVerboseTx(blockHash)
 	if err != nil {
 		return nil, nil
 	}

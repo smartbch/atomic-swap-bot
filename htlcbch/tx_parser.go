@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/gcash/bchd/btcjson"
 	"github.com/gcash/bchd/txscript"
-	"github.com/gcash/bchd/wire"
 )
 
 const (
@@ -35,8 +35,8 @@ type HtlcUnlockInfo struct {
 
 // === Lock ===
 
-func GetHtlcLocksInfo(block *wire.MsgBlock) (deposits []*HtlcLockInfo) {
-	for _, tx := range block.Transactions {
+func GetHtlcLocksInfo(block *btcjson.GetBlockVerboseTxResult) (deposits []*HtlcLockInfo) {
+	for _, tx := range block.Tx {
 		depositInfo := isHtlcLockTx(tx)
 		if depositInfo != nil {
 			deposits = append(deposits, depositInfo)
@@ -45,20 +45,28 @@ func GetHtlcLocksInfo(block *wire.MsgBlock) (deposits []*HtlcLockInfo) {
 	return
 }
 
+func decodeHex(s string) []byte {
+	bz, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
 // output#0: deposit, output#1: op_return
-func isHtlcLockTx(tx *wire.MsgTx) *HtlcLockInfo {
-	if len(tx.TxOut) < 2 {
+func isHtlcLockTx(tx btcjson.TxRawResult) *HtlcLockInfo {
+	if len(tx.Vout) < 2 {
 		return nil
 	}
 
 	// output#0 must be locked by P2SH script
-	scriptHash := getP2SHash(tx.TxOut[0].PkScript)
+	scriptHash := getP2SHash(decodeHex(tx.Vout[0].ScriptPubKey.Hex))
 	if scriptHash == nil {
 		return nil
 	}
 
 	// output#1 must be NULL DATA that contains the HTLC info
-	depositInfo := getHtlcLockInfo(tx.TxOut[1].PkScript)
+	depositInfo := getHtlcLockInfo(decodeHex(tx.Vout[1].ScriptPubKey.Hex))
 	if depositInfo == nil {
 		return nil
 	}
@@ -77,9 +85,9 @@ func isHtlcLockTx(tx *wire.MsgTx) *HtlcLockInfo {
 		return nil
 	}
 
-	depositInfo.TxHash = tx.TxHash().String()
+	depositInfo.TxHash = tx.Txid
 	depositInfo.ScriptHash = scriptHash
-	depositInfo.Value = uint64(tx.TxOut[0].Value)
+	depositInfo.Value = uint64(tx.Vout[0].Value)
 	return depositInfo
 }
 
@@ -128,8 +136,8 @@ func getP2SHash(pkScript []byte) (scriptHash []byte) {
 
 // === Unlock ===
 
-func GetHtlcUnlocksInfo(block *wire.MsgBlock) (receipts []*HtlcUnlockInfo) {
-	for _, tx := range block.Transactions {
+func GetHtlcUnlocksInfo(block *btcjson.GetBlockVerboseTxResult) (receipts []*HtlcUnlockInfo) {
+	for _, tx := range block.Tx {
 		receiptInfo := isHtlcUnlockTx(tx)
 		if receiptInfo != nil {
 			receipts = append(receipts, receiptInfo)
@@ -138,15 +146,15 @@ func GetHtlcUnlocksInfo(block *wire.MsgBlock) (receipts []*HtlcUnlockInfo) {
 	return
 }
 
-func isHtlcUnlockTx(tx *wire.MsgTx) *HtlcUnlockInfo {
-	if len(tx.TxIn) != 1 {
+func isHtlcUnlockTx(tx btcjson.TxRawResult) *HtlcUnlockInfo {
+	if len(tx.Vin) != 1 {
 		return nil
 	}
-	sigScript := tx.TxIn[0].SignatureScript
+	sigScript := decodeHex(tx.Vin[0].ScriptSig.Hex)
 	receiptInfo := getHtlcUnlockInfo(sigScript)
 	if receiptInfo != nil {
-		receiptInfo.PrevTxHash = tx.TxIn[0].PreviousOutPoint.Hash.String()
-		receiptInfo.TxHash = tx.TxHash().String()
+		receiptInfo.PrevTxHash = tx.Vin[0].Txid
+		receiptInfo.TxHash = tx.Txid
 	}
 	return receiptInfo
 }

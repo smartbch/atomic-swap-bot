@@ -18,7 +18,6 @@ import (
 	"github.com/gcash/bchd/bchec"
 	"github.com/gcash/bchd/btcjson"
 	"github.com/gcash/bchd/chaincfg"
-	"github.com/gcash/bchd/wire"
 	"github.com/gcash/bchutil"
 	log "github.com/sirupsen/logrus"
 
@@ -477,7 +476,7 @@ func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 }
 
 // find and handle BCH lock txs
-func (bot *MarketMakerBot) handleBchDepositTxs(h uint64, block *wire.MsgBlock) {
+func (bot *MarketMakerBot) handleBchDepositTxs(h uint64, block *btcjson.GetBlockVerboseTxResult) {
 	deposits := htlcbch.GetHtlcLocksInfo(block)
 	log.Info("HTLC deposits: ", len(deposits))
 	for _, deposit := range deposits {
@@ -560,7 +559,7 @@ func (bot *MarketMakerBot) handleBchDepositTxS2B(h uint64, deposit *htlcbch.Htlc
 }
 
 // find and handle BCH unlock txs
-func (bot *MarketMakerBot) handleBchReceiptTxs(block *wire.MsgBlock) {
+func (bot *MarketMakerBot) handleBchReceiptTxs(block *btcjson.GetBlockVerboseTxResult) {
 	receipts := htlcbch.GetHtlcUnlocksInfo(block)
 	log.Info("HTLC receipts: ", len(receipts))
 	for _, receipt := range receipts {
