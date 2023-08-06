@@ -151,6 +151,9 @@ func isHtlcUnlockTx(tx btcjson.TxRawResult) *HtlcUnlockInfo {
 	if len(tx.Vin) != 1 {
 		return nil
 	}
+	if tx.Vin[0].ScriptSig == nil {
+		return nil
+	}
 	sigScript := decodeHex(tx.Vin[0].ScriptSig.Hex)
 	receiptInfo := getHtlcUnlockInfo(sigScript)
 	if receiptInfo != nil {
