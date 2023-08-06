@@ -47,7 +47,7 @@ func TestFindUTXOs(t *testing.T) {
 	}, utxos)
 
 	_, err = findUTXOs(allUTXOs, 250000000, 3)
-	require.ErrorContains(t, err, "no available UTXOs (minVal: 250000000 sats)")
+	require.ErrorContains(t, err, "no available UTXOs (minVal: 250000000 sats, maxCount: 3)")
 }
 
 //func TestGetTxConfirmations(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"math"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gcash/bchd/btcjson"
@@ -87,7 +88,7 @@ func isHtlcLockTx(tx btcjson.TxRawResult) *HtlcLockInfo {
 
 	depositInfo.TxHash = tx.Txid
 	depositInfo.ScriptHash = scriptHash
-	depositInfo.Value = uint64(tx.Vout[0].Value)
+	depositInfo.Value = utxoAmtToSats(tx.Vout[0].Value)
 	return depositInfo
 }
 
@@ -193,4 +194,10 @@ func getHtlcUnlockInfo(sigScript []byte) *HtlcUnlockInfo {
 	//hashLock := constructorArgs[0]
 	//recipientPkh := constructorArgs[0]
 	//senderPkh := constructorArgs[0]
+}
+
+// utils
+
+func utxoAmtToSats(amt float64) uint64 {
+	return uint64(math.Round(amt * 1e8))
 }
