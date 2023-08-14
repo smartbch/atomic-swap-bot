@@ -103,10 +103,7 @@ go run github.com/smartbch/atomic-swap-bot/cmd/asbot \
 	--bch-confirmations=0 \
 	--bch-lock-fee-rate=2 \
 	--bch-unlock-fee-rate=2 \
-	--bch-refund-fee-rate=2 \
-	--sbch-lock-gas=500000 \
-	--sbch-unlock-gas=500000 \
-	--sbch-refund-gas=500000
+	--bch-refund-fee-rate=2
 ```
 
 
@@ -129,10 +126,7 @@ ego run asbot \
 	--bch-lock-fee-rate=2 \
 	--bch-unlock-fee-rate=2 \
 	--bch-refund-fee-rate=2 \
-	--sbch-gas-price=1.05 \
-	--sbch-lock-gas=500000 \
-	--sbch-unlock-gas=500000 \
-	--sbch-refund-gas=500000
+	--sbch-gas-price=1.05
 ```
 
 The above cmd prints something like this and wait inputs:

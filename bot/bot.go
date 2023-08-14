@@ -223,7 +223,6 @@ func NewBot(
 	sbchGasPrice *big.Int,
 	bchConfirmations uint8,
 	bchLockMinerFeeRate, bchUnlockMinerFeeRate, bchRefundMinerFeeRate uint64,
-	sbchLockGasLimit, sbchUnlockGasLimit, sbchRefundGasLimit uint64,
 	dbQueryLimit int,
 	debugMode bool,
 	slaveMode bool,
@@ -249,7 +248,7 @@ func NewBot(
 		return nil, fmt.Errorf("faield to create BCH RPC client: %w", err)
 	}
 	sbchCli, err := newSbchClient(sbchRpcUrl, 5*time.Second, sbchPrivKey, sbchAddr, sbchHtlcAddr,
-		sbchGasPrice, sbchLockGasLimit, sbchUnlockGasLimit, sbchRefundGasLimit)
+		sbchGasPrice)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sBCH RPC client: %w", err)
 	}
