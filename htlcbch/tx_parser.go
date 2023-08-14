@@ -181,22 +181,6 @@ func getHtlcUnlockInfo(sigScript []byte) *HtlcUnlockInfo {
 	return &HtlcUnlockInfo{
 		Secret: hex.EncodeToString(pushes[0]),
 	}
-
-	// TODO: more checks
-	//secret := pushes[0]
-	//sel := pushes[1]
-	//redeemScript := pushes[2]
-	//
-	//if !bytes.HasSuffix(redeemScript, redeemScriptWithoutConstructorArgs) {
-	//	return nil
-	//}
-	//
-	//constructorArgs, err := txscript.PushedData(
-	//	bytes.TrimSuffix(redeemScript, redeemScriptWithoutConstructorArgs))
-	//timeLock := constructorArgs[0]
-	//hashLock := constructorArgs[0]
-	//recipientPkh := constructorArgs[0]
-	//senderPkh := constructorArgs[0]
 }
 
 // utils

@@ -183,7 +183,7 @@ func (c *SbchClient) lockSbchToHtlc(
 		", amt :", amt.String(),
 		", bchAddr: ", bchAddr.String())
 
-	data, err := htlcsbch.PackOpen(userEvmAddr, hashLock, timeLock, bchAddr)
+	data, err := htlcsbch.PackLock(userEvmAddr, hashLock, timeLock, bchAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack calldata: %w", err)
 	}

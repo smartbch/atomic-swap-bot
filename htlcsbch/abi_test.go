@@ -22,13 +22,13 @@ func TestABI(t *testing.T) {
 	require.Equal(t, "7249fbb6", hex.EncodeToString(htlcAbi.Methods["refund"].ID))
 }
 
-func TestPackOpen(t *testing.T) {
+func TestPackLock(t *testing.T) {
 	recipient := common.Address{'b', 'o', 't', 0xbb}
 	hashLock := common.Hash{'s', 'e', 'c', 'r', 'e', 't', 0xcc}
 	timeLock := uint32(0x12345)
 	bchAddr := common.Address{'u', 's', 'e', 'r', 0xdd}
 
-	data, err := PackOpen(recipient, hashLock, timeLock, bchAddr)
+	data, err := PackLock(recipient, hashLock, timeLock, bchAddr)
 	require.NoError(t, err)
 	require.Equal(t, strings.ReplaceAll(`88070d39
 000000000000000000000000626f74bb00000000000000000000000000000000
