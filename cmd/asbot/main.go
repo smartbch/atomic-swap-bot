@@ -34,6 +34,7 @@ var (
 	debugMode        = true
 	slaveMode        = false
 	lazyMaster       = false
+	rpcListenAddr    = ""
 )
 
 func main() {
@@ -54,6 +55,7 @@ func main() {
 	flag.BoolVar(&debugMode, "debug", debugMode, "debug mode")
 	flag.BoolVar(&slaveMode, "slave", slaveMode, "slave mode")
 	flag.BoolVar(&lazyMaster, "lazy-master", lazyMaster, "delay to send unlock|refund tx (debug mode only)")
+	flag.StringVar(&rpcListenAddr, "rpc-listen-addr", rpcListenAddr, "host:port (will start RPC server if this option is not empty)")
 	flag.Parse()
 
 	if (!slaveMode && bchPrivKeyWIF == "") || sbchPrivKeyHex == "" || !debugMode {
@@ -82,6 +84,11 @@ func main() {
 	printUTXOs(utxos)
 
 	_bot.PrepareDB()
+
+	if rpcListenAddr != "" {
+		go _bot.StartHttpServer(rpcListenAddr)
+	}
+
 	_bot.Loop()
 }
 
