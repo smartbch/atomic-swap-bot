@@ -43,16 +43,13 @@ type ISbchClient interface {
 }
 
 type SbchClient struct {
-	client         *ethclient.Client
-	timeout        time.Duration
-	privKey        *ecdsa.PrivateKey
-	botAddr        common.Address
-	htlcAddr       common.Address
-	chainId        *big.Int
-	gasPrice       *big.Int
-	lockGasLimit   uint64
-	unlockGasLimit uint64
-	refundGasLimit uint64
+	client   *ethclient.Client
+	timeout  time.Duration
+	privKey  *ecdsa.PrivateKey
+	botAddr  common.Address
+	htlcAddr common.Address
+	chainId  *big.Int
+	gasPrice *big.Int
 }
 
 func newSbchClient(
@@ -60,7 +57,6 @@ func newSbchClient(
 	privKey *ecdsa.PrivateKey, botAddr common.Address,
 	htlcAddr common.Address,
 	gasPrice *big.Int,
-	lockGasLimit, unlockGasLimit, refundGasLimit uint64,
 ) (*SbchClient, error) {
 
 	client, err := ethclient.Dial(rawUrl)
@@ -68,15 +64,12 @@ func newSbchClient(
 		return nil, err
 	}
 	return &SbchClient{
-		client:         client,
-		timeout:        timeout,
-		privKey:        privKey,
-		botAddr:        botAddr,
-		htlcAddr:       htlcAddr,
-		gasPrice:       gasPrice,
-		lockGasLimit:   lockGasLimit,
-		unlockGasLimit: unlockGasLimit,
-		refundGasLimit: refundGasLimit,
+		client:   client,
+		timeout:  timeout,
+		privKey:  privKey,
+		botAddr:  botAddr,
+		htlcAddr: htlcAddr,
+		gasPrice: gasPrice,
 	}, nil
 }
 
@@ -131,7 +124,7 @@ func (c *SbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
 	msg := ethereum.CallMsg{
 		From: c.botAddr,
 		To:   &c.htlcAddr,
-		Gas:  c.lockGasLimit,
+		Gas:  500_000,
 		Data: callData,
 	}
 
@@ -154,7 +147,7 @@ func (c *SbchClient) getMarketMakerInfo(addr common.Address) (*htlcsbch.MarketMa
 	msg := ethereum.CallMsg{
 		From: c.botAddr,
 		To:   &c.htlcAddr,
-		Gas:  c.lockGasLimit,
+		Gas:  500_000,
 		Data: callData,
 	}
 
@@ -183,11 +176,11 @@ func (c *SbchClient) lockSbchToHtlc(
 		", amt :", amt.String(),
 		", bchAddr: ", bchAddr.String())
 
-	data, err := htlcsbch.PackOpen(userEvmAddr, hashLock, timeLock, bchAddr)
+	data, err := htlcsbch.PackLock(userEvmAddr, hashLock, timeLock, bchAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack calldata: %w", err)
 	}
-	return c.callHtlc(amt, data, c.lockGasLimit)
+	return c.callHtlc(amt, data)
 }
 
 // call unlock()
@@ -203,7 +196,7 @@ func (c *SbchClient) unlockSbchFromHtlc(
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack calldata: %w", err)
 	}
-	return c.callHtlc(big.NewInt(0), data, c.unlockGasLimit)
+	return c.callHtlc(big.NewInt(0), data)
 }
 
 // call refund()
@@ -215,10 +208,10 @@ func (c *SbchClient) refundSbchFromHtlc(hashLock common.Hash) (*common.Hash, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack calldata: %w", err)
 	}
-	return c.callHtlc(big.NewInt(0), data, c.refundGasLimit)
+	return c.callHtlc(big.NewInt(0), data)
 }
 
-func (c *SbchClient) callHtlc(val *big.Int, data []byte, gasLimit uint64) (*common.Hash, error) {
+func (c *SbchClient) callHtlc(val *big.Int, data []byte) (*common.Hash, error) {
 	chainID, err := c.getChainId()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID: %w", err)
@@ -228,6 +221,17 @@ func (c *SbchClient) callHtlc(val *big.Int, data []byte, gasLimit uint64) (*comm
 		return nil, fmt.Errorf("failed to get nonce: %w", err)
 	}
 
+	gasLimit, err := c.estimateGas(ethereum.CallMsg{
+		From:  c.botAddr,
+		To:    &c.htlcAddr,
+		Value: val,
+		Data:  data,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to estimate gas: %w", err)
+	}
+
+	gasLimit = gasLimit * 120 / 100
 	signer := types.NewEIP155Signer(chainID)
 	tx, err := types.SignNewTx(c.privKey, signer, &types.LegacyTx{
 		Nonce:    nonce,
@@ -267,13 +271,23 @@ func (c *SbchClient) getChainId() (*big.Int, error) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), c.timeout)
 	defer cancelFn()
-	return c.client.ChainID(ctx)
+	chainId, err := c.client.ChainID(ctx)
+	if err == nil {
+		c.chainId = chainId
+	}
+	return chainId, err
 }
 
 func (c *SbchClient) getNonce() (uint64, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), c.timeout)
 	defer cancelFn()
 	return c.client.NonceAt(ctx, c.botAddr, nil)
+}
+
+func (c *SbchClient) estimateGas(msg ethereum.CallMsg) (uint64, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), c.timeout)
+	defer cancelFn()
+	return c.client.EstimateGas(ctx, msg)
 }
 
 func (c *SbchClient) sendTx(tx *types.Transaction) error {

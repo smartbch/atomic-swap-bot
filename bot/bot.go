@@ -20,7 +20,6 @@ import (
 	"github.com/gcash/bchd/chaincfg"
 	"github.com/gcash/bchutil"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/smartbch/atomic-swap-bot/htlcbch"
 	"github.com/smartbch/atomic-swap-bot/htlcsbch"
 )
@@ -183,9 +182,11 @@ const (
 )
 
 type MarketMakerBot struct {
-	db      DB
-	bchCli  IBchClient
-	sbchCli ISbchClient
+	db          DB            // thread safe
+	bchCli      IBchClient    // thread safe
+	sbchCli     ISbchClient   // not thread safe
+	sbchCliRO   *SbchClientRO // not thread safe
+	errLogQueue *ErrLogQueue  // thread safe
 
 	// BCH key
 	bchPrivKey *bchec.PrivateKey
@@ -223,7 +224,6 @@ func NewBot(
 	sbchGasPrice *big.Int,
 	bchConfirmations uint8,
 	bchLockMinerFeeRate, bchUnlockMinerFeeRate, bchRefundMinerFeeRate uint64,
-	sbchLockGasLimit, sbchUnlockGasLimit, sbchRefundGasLimit uint64,
 	dbQueryLimit int,
 	debugMode bool,
 	slaveMode bool,
@@ -249,9 +249,13 @@ func NewBot(
 		return nil, fmt.Errorf("faield to create BCH RPC client: %w", err)
 	}
 	sbchCli, err := newSbchClient(sbchRpcUrl, 5*time.Second, sbchPrivKey, sbchAddr, sbchHtlcAddr,
-		sbchGasPrice, sbchLockGasLimit, sbchUnlockGasLimit, sbchRefundGasLimit)
+		sbchGasPrice)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sBCH RPC client: %w", err)
+	}
+	sbchCliRO, err := newSbchClientRO(sbchRpcUrl, 5*time.Second, sbchAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sBCH RPC client (RO): %w", err)
 	}
 
 	botInfo, err := sbchCli.getMarketMakerInfo(sbchAddr)
@@ -283,6 +287,7 @@ func NewBot(
 		bchPkh:                bchPkh,
 		bchAddr:               bchAddr,
 		sbchCli:               sbchCli,
+		sbchCliRO:             sbchCliRO,
 		sbchPrivKey:           sbchPrivKey,
 		sbchAddr:              sbchAddr,
 		bchTimeLock:           botInfo.BchLockTime,
@@ -298,6 +303,7 @@ func NewBot(
 		dbQueryLimit:          dbQueryLimit,
 		isSlaveMode:           slaveMode,
 		lazyMaster:            debugMode && lazyMaster,
+		errLogQueue:           newErrLogQueue(5000),
 	}, nil
 }
 
@@ -385,6 +391,15 @@ func getBchParams(debugMode bool) *chaincfg.Params {
 	return &chaincfg.MainNetParams
 }
 
+func (bot *MarketMakerBot) logError(msg string, err error) {
+	log.Error(msg, err)
+	bot.errLogQueue.recordErrLog("error", fmt.Sprintf("%s: %s", msg, err))
+}
+func (bot *MarketMakerBot) logWarnf(format string, args ...any) {
+	log.Warnf(format, args...)
+	bot.errLogQueue.recordErrLog("warning", fmt.Sprintf(format, args...))
+}
+
 func (bot *MarketMakerBot) PrepareDB() {
 	_, err := bot.db.getLastHeights()
 	if err == nil || !strings.HasPrefix(err.Error(), "no such table") {
@@ -432,7 +447,7 @@ func (bot *MarketMakerBot) scanBchBlocks() (gotNewBlocks bool) {
 
 	latestBlockNum, err := bot.bchCli.getBlockCount()
 	if err != nil {
-		log.Error("RPC error, failed to get BCH height: ", err)
+		bot.logError("RPC error, failed to get BCH height: ", err)
 		return
 	}
 	log.Info("latest BCH height: ", latestBlockNum)
@@ -459,7 +474,7 @@ func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 	//log.Info("get BCH block#", h, " ...")
 	block, err := bot.bchCli.getBlock(h)
 	if err != nil {
-		log.Error("RPC error, failed to get BCH block#", h, " : ", err)
+		bot.logError(fmt.Sprintf("RPC error, failed to get BCH block#%d: ", h), err)
 		return false
 	}
 	log.Info("got BCH block#", h)
@@ -525,7 +540,7 @@ func (bot *MarketMakerBot) handleBchDepositTxB2S(h uint64, deposit *htlcbch.Htlc
 		HtlcScriptHash: toHex(deposit.ScriptHash),
 	})
 	if err != nil {
-		log.Error("DB error, failed to save BCH2SBCH record: ", err)
+		bot.logError("DB error, failed to save BCH2SBCH record: ", err)
 	}
 }
 
@@ -554,7 +569,7 @@ func (bot *MarketMakerBot) handleBchDepositTxS2B(h uint64, deposit *htlcbch.Htlc
 	record.UpdateStatusToBchLocked(deposit.TxHash)
 	err = bot.db.updateSbch2BchRecord(record)
 	if err != nil {
-		log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
+		bot.logError("DB error, failed to update status of SBCH2BCH record: ", err)
 	}
 }
 
@@ -581,7 +596,7 @@ func (bot *MarketMakerBot) handleBchReceiptTx(receipt *htlcbch.HtlcUnlockInfo) {
 
 	hashLock := secretToHashLock(gethcmn.FromHex(receipt.Secret))
 	if hashLock != record.HashLock {
-		log.Warnf("hashLock not match! secret: %s => hashLock: %s, DB hashLock: %s, ",
+		bot.logWarnf("hashLock not match! secret: %s => hashLock: %s, DB hashLock: %s, ",
 			receipt.Secret, hashLock, record.HashLock)
 		return
 	}
@@ -594,7 +609,7 @@ func (bot *MarketMakerBot) handleBchReceiptTx(receipt *htlcbch.HtlcUnlockInfo) {
 	record.UpdateStatusToSecretRevealed(receipt.Secret, receipt.TxHash)
 	err = bot.db.updateSbch2BchRecord(record)
 	if err != nil {
-		log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
+		bot.logError("DB error, failed to update status of SBCH2BCH record: ", err)
 	}
 }
 
@@ -609,7 +624,7 @@ func (bot *MarketMakerBot) scanSbchEvents() {
 
 	newBlockNum, err := bot.sbchCli.getBlockNumber()
 	if err != nil {
-		log.Error("failed to get height of smartBCH: ", err)
+		bot.logError("failed to get height of smartBCH: ", err)
 		return
 	}
 	log.Info("latest sBCH height: ", newBlockNum)
@@ -634,7 +649,7 @@ func (bot *MarketMakerBot) scanSbchEvents() {
 func (bot *MarketMakerBot) handleSbchEvents(fromH, toH uint64) bool {
 	logs, err := bot.sbchCli.getHtlcLogs(fromH, toH)
 	if err != nil {
-		log.Error("failed to get smartBCH logs: ", err)
+		bot.logError("failed to get smartBCH logs: ", err)
 		return false
 	}
 	log.Infof("sBCH logs (block#%d ~ block#%d): %d",
@@ -708,13 +723,13 @@ func (bot *MarketMakerBot) handleSbchLockEventS2B(ethLog gethtypes.Log) {
 	covenant, err := htlcbch.NewMainnetCovenant(bot.bchPkh,
 		lockLog.BchRecipientPkh[:], lockLog.HashLock[:], bchTimeLock, 0)
 	if err != nil {
-		log.Error("failed to create HTLC covenant: ", err)
+		bot.logError("failed to create HTLC covenant: ", err)
 		return
 	}
 
 	scriptHash, err := covenant.GetRedeemScriptHash()
 	if err != nil {
-		log.Error("failed to get script hash: ", err)
+		bot.logError("failed to get script hash: ", err)
 		return
 	}
 
@@ -730,7 +745,7 @@ func (bot *MarketMakerBot) handleSbchLockEventS2B(ethLog gethtypes.Log) {
 		HtlcScriptHash:  toHex(scriptHash),
 	})
 	if err != nil {
-		log.Error("DB error, failed to save SBCH2BCH record: ", err)
+		bot.logError("DB error, failed to save SBCH2BCH record: ", err)
 	}
 }
 
@@ -757,7 +772,7 @@ func (bot *MarketMakerBot) handleSbchLockEventB2S(ethLog gethtypes.Log) {
 
 	record, err := bot.db.getBch2SbchRecordByHashLock(toHex(lockLog.HashLock[:]))
 	if err != nil {
-		log.Error("DB error:", err)
+		bot.logError("DB error:", err)
 		return
 	}
 
@@ -767,14 +782,14 @@ func (bot *MarketMakerBot) handleSbchLockEventB2S(ethLog gethtypes.Log) {
 
 	txTime, err := bot.sbchCli.getTxTime(ethLog.TxHash)
 	if err != nil {
-		log.Error("RPC error, failed to get sBCH tx time:", err)
+		bot.logError("RPC error, failed to get sBCH tx time:", err)
 		txTime = uint64(time.Now().Unix())
 	}
 
 	record.UpdateStatusToSbchLocked(toHex(ethLog.TxHash[:]), txTime)
 	err = bot.db.updateBch2SbchRecord(record)
 	if err != nil {
-		log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
+		bot.logError("DB error, failed to update status of BCH2SBCH record: ", err)
 	}
 }
 
@@ -796,7 +811,7 @@ func (bot *MarketMakerBot) handleSbchUnlockEvent(ethLog gethtypes.Log) {
 
 	hashLock2 := secretToHashLock(unlockLog.Secret[:])
 	if hashLock2 != hashLock {
-		log.Warnf("hashLock not match! secret: %s => hashLock: %s, DB hashLock: %s, ",
+		bot.logWarnf("hashLock not match! secret: %s => hashLock: %s, DB hashLock: %s, ",
 			toHex(unlockLog.Secret[:]), hashLock2, hashLock)
 		return
 	}
@@ -808,7 +823,7 @@ func (bot *MarketMakerBot) handleSbchUnlockEvent(ethLog gethtypes.Log) {
 	record.UpdateStatusToSecretRevealed(toHex(unlockLog.Secret[:]), toHex(unlockLog.TxHash[:]))
 	err = bot.db.updateBch2SbchRecord(record)
 	if err != nil {
-		log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
+		bot.logError("DB error, failed to update status of BCH2SBCH record: ", err)
 		return
 	}
 }
@@ -822,7 +837,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 	log.Info("handle BCH user deposits ...")
 	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, bot.dbQueryLimit)
 	if err != nil {
-		log.Error("DB error, failed to get BCH2SBCH records: ", err)
+		bot.logError("DB error, failed to get BCH2SBCH records: ", err)
 		return
 	}
 	log.Info("unhandled BCH user deposits: ", len(records))
@@ -833,7 +848,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 		//confirmations := currBlockNum - int64(record.BchLockHeight) + 1
 		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
 		if err != nil {
-			log.Error("RPC error, failed to get tx confirmations: ", err)
+			bot.logError("RPC error, failed to get tx confirmations: ", err)
 			continue
 		}
 
@@ -845,7 +860,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 			record.Status = Bch2SbchStatusTooLateToLockSbch
 			err = bot.db.updateBch2SbchRecord(record)
 			if err != nil {
-				log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
+				bot.logError("DB error, failed to update status of BCH2SBCH record: ", err)
 			}
 
 			continue
@@ -862,7 +877,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 			satsToWei(bchValMinusFee),
 		)
 		if err != nil {
-			log.Error("RPC error, failed to lock sBCH to HTLC: ", err)
+			bot.logError("RPC error, failed to lock sBCH to HTLC: ", err)
 			continue
 		}
 
@@ -872,14 +887,14 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 
 		txTime, err := bot.sbchCli.getTxTime(*txHash)
 		if err != nil {
-			log.Error("RPC error, failed to get sBCH tx time:", err)
+			bot.logError("RPC error, failed to get sBCH tx time:", err)
 			txTime = uint64(time.Now().Unix())
 		}
 
 		record.UpdateStatusToSbchLocked(toHex(txHash[:]), txTime)
 		err = bot.db.updateBch2SbchRecord(record)
 		if err != nil {
-			log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
+			bot.logError("DB error, failed to update status of BCH2SBCH record: ", err)
 		}
 	}
 }
@@ -901,7 +916,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 
 	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusNew, bot.dbQueryLimit)
 	if err != nil {
-		log.Error("DB error, failed to get unhandled sBCH user deposits: ", err)
+		bot.logError("DB error, failed to get unhandled sBCH user deposits: ", err)
 		return
 	}
 	log.Info("unhandled sBCH user deposits: ", len(records))
@@ -912,7 +927,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 		bchValMinusFee := int64(record.Value) * (10000 - int64(bot.serviceFeeRatio)) / 10000
 		utxos, err := bot.bchCli.getUTXOs(bchValMinusFee+5000, 10)
 		if err != nil {
-			log.Error("failed to get UTXOs: ", err)
+			bot.logError("failed to get UTXOs: ", err)
 			continue
 		}
 		log.Info("bchValMinusFee: ", bchValMinusFee, ", UTXOs:", toJSON(utxos))
@@ -928,7 +943,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 
 		currTime, err := bot.sbchCli.getBlockTimeLatest()
 		if err != nil {
-			log.Error("RPC error, failed to get sBCH time: ", err)
+			bot.logError("RPC error, failed to get sBCH time: ", err)
 			continue
 		}
 
@@ -939,7 +954,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 			record.Status = Sbch2BchStatusTooLateToLockBch
 			err = bot.db.updateSbch2BchRecord(record)
 			if err != nil {
-				log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
+				bot.logError("DB error, failed to update status of SBCH2BCH record: ", err)
 			}
 
 			continue
@@ -958,7 +973,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 			0,
 		)
 		if err != nil {
-			log.Error("failed to create HTLC covenant: ", err)
+			bot.logError("failed to create HTLC covenant: ", err)
 			continue
 		}
 
@@ -969,14 +984,14 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 			bot.bchLockMinerFeeRate,
 		)
 		if err != nil {
-			log.Error("failed to create BCH tx: ", err)
+			bot.logError("failed to create BCH tx: ", err)
 			continue
 		}
 		log.Info("BCH tx hex: ", htlcbch.MsgTxToHex(tx))
 
 		txHash, err := bot.bchCli.SendTx(tx)
 		if err != nil {
-			log.Error("failed to send BCH tx: ", err)
+			bot.logError("failed to send BCH tx: ", err)
 
 			// more debug info
 			//prevPkScript, _ := htlcbch.PayToPubKeyHashPkScript(bot.bchPkh)
@@ -989,7 +1004,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 		record.UpdateStatusToBchLocked(txHash.String())
 		err = bot.db.updateSbch2BchRecord(record)
 		if err != nil {
-			log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
+			bot.logError("DB error, failed to update status of SBCH2BCH record: ", err)
 		}
 	}
 }
@@ -999,7 +1014,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 	log.Info("unlock BCH user deposits ...")
 	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusSecretRevealed, bot.dbQueryLimit)
 	if err != nil {
-		log.Error("failed to get BCH2SBCH records from DB: ", err)
+		bot.logError("failed to get BCH2SBCH records from DB: ", err)
 		return
 	}
 	log.Info("secret-revealed BCH user deposits: ", len(records))
@@ -1029,7 +1044,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 			record.PenaltyBPS,
 		)
 		if err != nil {
-			log.Error("failed to create HTLC covenant: ", err)
+			bot.logError("failed to create HTLC covenant: ", err)
 			continue
 		}
 		p2shAddr, _ := covenant.GetP2SHAddress()
@@ -1043,7 +1058,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 			gethcmn.FromHex(record.Secret),
 		)
 		if err != nil {
-			log.Error("failed to create unlock tx: ", err)
+			bot.logError("failed to create unlock tx: ", err)
 			continue
 		}
 		log.Info("tx: ", htlcbch.MsgTxToHex(tx))
@@ -1053,7 +1068,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 			log.Info("BCH unlock tx sent, hash: ", txHash.String())
 			txHashStr = txHash.String()
 		} else {
-			log.Error("failed to unlock BCH: ", err)
+			bot.logError("failed to unlock BCH: ", err)
 			if isUtxoSpentErr(err) {
 				log.Info("UTXO is spent by others")
 			} else {
@@ -1064,7 +1079,7 @@ func (bot *MarketMakerBot) unlockBchUserDeposits() {
 		record.UpdateStatusToBchUnlocked(txHashStr)
 		err = bot.db.updateBch2SbchRecord(record)
 		if err != nil {
-			log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
+			bot.logError("DB error, failed to update status of BCH2SBCH record: ", err)
 		}
 	}
 }
@@ -1074,7 +1089,7 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 	log.Info("unlock sBCH user deposits ...")
 	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusSecretRevealed, bot.dbQueryLimit)
 	if err != nil {
-		log.Error("DB error, failed to get SBCH2BCH records from DB: ", err)
+		bot.logError("DB error, failed to get SBCH2BCH records from DB: ", err)
 		return
 	}
 	log.Info("secret-revealed sBCH user deposits: ", len(records))
@@ -1104,7 +1119,7 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 			txHashStr = toHex(txHash[:])
 			log.Info("sBCH unlock tx sent, hash: ", txHashStr)
 		} else {
-			log.Error("RPC error, failed to unlock sBCH: ", err)
+			bot.logError("RPC error, failed to unlock sBCH: ", err)
 
 			state, _ := bot.sbchCli.getSwapState(hashLock)
 			if state == SwapUnlocked {
@@ -1117,7 +1132,7 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 		record.UpdateStatusToSbchUnlocked(txHashStr)
 		err = bot.db.updateSbch2BchRecord(record)
 		if err != nil {
-			log.Error("DB error, failed to update status of SBCH2BCH record: ", err)
+			bot.logError("DB error, failed to update status of SBCH2BCH record: ", err)
 		}
 	}
 }
@@ -1132,7 +1147,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 
 	records, err := bot.db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, bot.dbQueryLimit)
 	if err != nil {
-		log.Error("DB error, failed to get SBCH2BCH records: ", err)
+		bot.logError("DB error, failed to get SBCH2BCH records: ", err)
 		return
 	}
 	log.Info("BchLocked SBCH2BCH records: ", len(records))
@@ -1153,7 +1168,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 
 		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
 		if err != nil {
-			log.Error("RPC error, failed to get tx confirmations: ", err)
+			bot.logError("RPC error, failed to get tx confirmations: ", err)
 			continue
 		}
 
@@ -1170,8 +1185,8 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 			0,
 		)
 		if err != nil {
-			log.Error("failed to create HTLC covenant: ", err)
-			log.Error("record:", toJSON(record))
+			bot.logError("failed to create HTLC covenant: ", err)
+			log.Info("record:", toJSON(record))
 			continue
 		}
 
@@ -1183,7 +1198,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 			bot.bchRefundMinerFeeRate,
 		)
 		if err != nil {
-			log.Error("failed to make refund tx: ", err)
+			bot.logError("failed to make refund tx: ", err)
 			continue
 		}
 		log.Info("refund tx: ", htlcbch.MsgTxToHex(tx))
@@ -1193,7 +1208,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 			log.Info("BCH refund tx sent, hash: ", txHash.String())
 			txHashStr = txHash.String()
 		} else {
-			log.Error("failed to refund BCH: ", err)
+			bot.logError("failed to refund BCH: ", err)
 			if isUtxoSpentErr(err) {
 				log.Info("UTXO is spent by others")
 			} else {
@@ -1204,7 +1219,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 		record.UpdateStatusToBchRefunded(txHashStr)
 		err = bot.db.updateSbch2BchRecord(record)
 		if err != nil {
-			log.Error("DB error, failed to save SBCH2BCH record: ", err)
+			bot.logError("DB error, failed to save SBCH2BCH record: ", err)
 		}
 	}
 }
@@ -1215,7 +1230,7 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 
 	records, err := bot.db.getBch2SbchRecordsByStatus(Bch2SbchStatusSbchLocked, bot.dbQueryLimit)
 	if err != nil {
-		log.Error("DB error, failed to get BCH2SBCH records: ", err)
+		bot.logError("DB error, failed to get BCH2SBCH records: ", err)
 		return
 	}
 
@@ -1226,7 +1241,7 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 
 	sbchNow, err := bot.sbchCli.getBlockTimeLatest()
 	if err != nil {
-		log.Error("RPC error, failed to get sBCH time: ", err)
+		bot.logError("RPC error, failed to get sBCH time: ", err)
 		return
 	}
 	log.Info("sbchNow: ", sbchNow)
@@ -1258,7 +1273,7 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 			txHashStr = toHex(txHash.Bytes())
 			log.Info("sBCH refund tx sent, hash: ", txHashStr)
 		} else {
-			log.Error("RPC error, failed to refund sBCH: ", err)
+			bot.logError("RPC error, failed to refund sBCH: ", err)
 
 			state, _ := bot.sbchCli.getSwapState(hashLock)
 			if state == SwapRefunded {
@@ -1271,7 +1286,7 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 		record.UpdateStatusToSbchRefunded(txHashStr)
 		err = bot.db.updateBch2SbchRecord(record)
 		if err != nil {
-			log.Error("DB error, failed to update status of BCH2SBCH record: ", err)
+			bot.logError("DB error, failed to update status of BCH2SBCH record: ", err)
 		}
 	}
 }
@@ -1297,6 +1312,9 @@ func weiToSats(amt *big.Int) uint64 {
 
 func utxoAmtToSats(amt float64) int64 {
 	return int64(math.Round(amt * 1e8))
+}
+func satsToUtxoAmt(val uint64) float64 {
+	return float64(val) / 1e8
 }
 
 func toHex(bs []byte) string {

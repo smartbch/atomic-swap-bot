@@ -622,7 +622,7 @@ func init() {
 	RefundEventId = htlcAbi.Events["Refund"].ID
 }
 
-func PackOpen(
+func PackLock(
 	recipient common.Address,
 	hashLock common.Hash,
 	timeLock uint32,

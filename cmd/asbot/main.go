@@ -29,14 +29,12 @@ var (
 	bchLockFeeRate   = uint64(2) // sats/byte
 	bchUnlockFeeRate = uint64(2) // sats/byte
 	bchRefundFeeRate = uint64(2) // sats/byte
-	sbchLuckGas      = uint64(500_000)
-	sbchUnlockGas    = uint64(500_000)
-	sbchRefundGas    = uint64(500_000)
 	bchConfirmations = uint64(10)
 	dbQueryLimit     = uint64(100)
 	debugMode        = true
 	slaveMode        = false
 	lazyMaster       = false
+	rpcListenAddr    = ""
 )
 
 func main() {
@@ -53,13 +51,11 @@ func main() {
 	flag.Uint64Var(&bchLockFeeRate, "bch-lock-fee-rate", bchLockFeeRate, "miner fee rate of BCH HTLC lock tx (Sats/byte)")
 	flag.Uint64Var(&bchUnlockFeeRate, "bch-unlock-fee-rate", bchUnlockFeeRate, "miner fee rate of BCH HTLC unlock tx (Sats/byte)")
 	flag.Uint64Var(&bchRefundFeeRate, "bch-refund-fee-rate", bchUnlockFeeRate, "miner fee rate of BCH HTLC refund tx (Sats/byte)")
-	flag.Uint64Var(&sbchLuckGas, "sbch-lock-gas", sbchLuckGas, "gas limit of sBCH HTLC lock tx")
-	flag.Uint64Var(&sbchUnlockGas, "sbch-unlock-gas", sbchUnlockGas, "gas limit of sBCH HTLC unlock tx")
-	flag.Uint64Var(&sbchRefundGas, "sbch-refund-gas", sbchRefundGas, "gas limit of sBCH HTLC refund tx")
 	flag.Uint64Var(&dbQueryLimit, "db-query-limit", dbQueryLimit, "db query limit")
 	flag.BoolVar(&debugMode, "debug", debugMode, "debug mode")
 	flag.BoolVar(&slaveMode, "slave", slaveMode, "slave mode")
 	flag.BoolVar(&lazyMaster, "lazy-master", lazyMaster, "delay to send unlock|refund tx (debug mode only)")
+	flag.StringVar(&rpcListenAddr, "rpc-listen-addr", rpcListenAddr, "host:port (will start RPC server if this option is not empty)")
 	flag.Parse()
 
 	if (!slaveMode && bchPrivKeyWIF == "") || sbchPrivKeyHex == "" || !debugMode {
@@ -74,7 +70,6 @@ func main() {
 		bchRpcUrl, sbchRpcUrl, _sbchHtlcAddr, _sbchGasPrice,
 		uint8(bchConfirmations),
 		bchLockFeeRate, bchUnlockFeeRate, bchRefundFeeRate,
-		sbchLuckGas, sbchUnlockGas, sbchRefundGas,
 		int(dbQueryLimit),
 		debugMode, slaveMode, lazyMaster,
 	)
@@ -89,6 +84,11 @@ func main() {
 	printUTXOs(utxos)
 
 	_bot.PrepareDB()
+
+	if rpcListenAddr != "" {
+		go _bot.StartHttpServer(rpcListenAddr)
+	}
+
 	_bot.Loop()
 }
 
