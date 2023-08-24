@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	log "github.com/sirupsen/logrus"
 
@@ -216,13 +217,15 @@ func (c *SbchClient) callHtlc(val *big.Int, data []byte) (*common.Hash, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID: %w", err)
 	}
-	nonce, err := c.getNonce()
+
+	myAddr := crypto.PubkeyToAddress(c.privKey.PublicKey)
+	nonce, err := c.getNonce(myAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nonce: %w", err)
 	}
 
 	gasLimit, err := c.estimateGas(ethereum.CallMsg{
-		From:  c.botAddr,
+		From:  myAddr,
 		To:    &c.htlcAddr,
 		Value: val,
 		Data:  data,
@@ -278,10 +281,10 @@ func (c *SbchClient) getChainId() (*big.Int, error) {
 	return chainId, err
 }
 
-func (c *SbchClient) getNonce() (uint64, error) {
+func (c *SbchClient) getNonce(addr common.Address) (uint64, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), c.timeout)
 	defer cancelFn()
-	return c.client.NonceAt(ctx, c.botAddr, nil)
+	return c.client.NonceAt(ctx, addr, nil)
 }
 
 func (c *SbchClient) estimateGas(msg ethereum.CallMsg) (uint64, error) {
