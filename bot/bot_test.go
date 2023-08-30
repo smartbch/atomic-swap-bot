@@ -2,6 +2,7 @@ package bot
 
 import (
 	"crypto/sha256"
+	"math/big"
 	"strconv"
 	"testing"
 	"time"
@@ -96,6 +97,8 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 		bchPkh:       _botPkh,
 		bchTimeLock:  _timeLock,
 		penaltyRatio: _penaltyBPS,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 	_bot.scanBchBlocks()
 
@@ -198,6 +201,8 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 		penaltyRatio: _penaltyBPS,
 		maxSwapVal:   _maxSwapVal,
 		minSwapVal:   _minSwapVal,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 	_bot.scanBchBlocks()
 
@@ -237,14 +242,15 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 	_bchCli := newMockBchClient(124, 125)
 	_sbchCli := newMockSbchClient(457, 999, 0)
 	_bot := &MarketMakerBot{
-		db:              _db,
-		dbQueryLimit:    100,
-		bchCli:          _bchCli,
-		sbchCli:         _sbchCli,
-		bchPrivKey:      testBchPrivKey,
-		bchPkh:          _botPkh,
-		bchTimeLock:     72,
-		serviceFeeRatio: 100,
+		db:           _db,
+		dbQueryLimit: 100,
+		bchCli:       _bchCli,
+		sbchCli:      _sbchCli,
+		bchPrivKey:   testBchPrivKey,
+		bchPkh:       _botPkh,
+		bchTimeLock:  72,
+		bchPrice:     big.NewInt(8e17), // 0.8
+		sbchPrice:    big.NewInt(1e18),
 	}
 	_bot.handleBchUserDeposits()
 
@@ -302,6 +308,8 @@ func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 		bchPkh:           _botPkh,
 		bchTimeLock:      72,
 		bchConfirmations: 10,
+		bchPrice:         big.NewInt(1e18),
+		sbchPrice:        big.NewInt(1e18),
 	}
 	_bot.scanBchBlocks()
 
@@ -342,6 +350,8 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       _botPkh,
 		bchTimeLock:  72,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 	_bot.handleBchUserDeposits()
 
@@ -396,6 +406,8 @@ func TestBch2Sbch_userUnlockSbch(t *testing.T) {
 		dbQueryLimit: 100,
 		sbchCli:      _sbchCli,
 		bchPkh:       testBchPkh,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 
 	_bot.scanSbchEvents()
@@ -460,6 +472,8 @@ func TestBch2Sbch_botUnlockBch(t *testing.T) {
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       testBchPkh,
 		bchAddr:      testBchAddr,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 	_bot.unlockBchUserDeposits()
 
@@ -530,6 +544,8 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 		dbQueryLimit: 100,
 		sbchCli:      _sbchCli,
 		bchPkh:       testBchPkh,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 
 	_bot.refundLockedSbch()
@@ -612,6 +628,8 @@ func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 		sbchCli:      _sbchCli,
 		sbchAddr:     _botEvmAddr,
 		isSlaveMode:  true,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 	_bot.handleSbchEvents(457, 500)
 
@@ -672,6 +690,8 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 		bchPkh:       testBchPkh,
 		sbchTimeLock: 12 * 3600,
 		penaltyRatio: 500,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 	_bot.scanSbchEvents()
 
@@ -792,6 +812,8 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 		penaltyRatio: _penaltyBPS,
 		minSwapVal:   _minSwapVal,
 		maxSwapVal:   _maxSwapVal,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 	_bot.scanSbchEvents()
 
@@ -841,6 +863,8 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 		sbchCli:      _sbchCli,
 		sbchAddr:     testEvmAddr,
 		sbchTimeLock: _timeLock,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(8e17),
 	}
 
 	_bot.handleSbchUserDeposits()
@@ -857,8 +881,9 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 	require.Equal(t, toHex(_hashLock), record0.HashLock)
 	require.Equal(t, uint32(36000), record0.TimeLock)
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
-	require.Equal(t, "c5eb9154b5affee47b863866a4264933c805f4700a0c1041c188292a4e70c333",
+	require.Equal(t, "4bef5cf6e7c695d431dd882ebcaf10930dc347b274173b5ccabc398cb98b6d35",
 		record0.BchLockTxHash)
+	require.Equal(t, uint64(9876542), record0.BchLockedValue)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
 	require.Equal(t, Sbch2BchStatusBchLocked, record0.Status)
@@ -901,6 +926,8 @@ func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
 		sbchCli:      _sbchCli,
 		sbchAddr:     testEvmAddr,
 		sbchTimeLock: _timeLock,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 
 	_bot.handleSbchUserDeposits()
@@ -975,6 +1002,8 @@ func TestSbch2Bch_userUnlockBch(t *testing.T) {
 		dbQueryLimit: 100,
 		bchCli:       _bchCli,
 		bchPkh:       testBchPkh,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 
 	_bot.scanBchBlocks()
@@ -1033,6 +1062,8 @@ func TestSbch2Bch_botUnlockSbch(t *testing.T) {
 		db:           _db,
 		dbQueryLimit: 100,
 		sbchCli:      _sbchCli,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 
 	_bot.unlockSbchUserDeposits()
@@ -1103,6 +1134,8 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       testBchPkh,
 		bchAddr:      testBchAddr,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 
 	_bot.refundLockedBCH(true)
@@ -1123,7 +1156,7 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 	require.Equal(t, "", record0.BchUnlockTxHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
-	require.Equal(t, "1697cd6dddc9182ebac736c2dfc15e9057a7c279b0d1da323b0163dc57a4ce97",
+	require.Equal(t, "02f5fa4d1ffaff3aa70308b6fbbcb0ec8710838a6e9aed4d8907e277189d68df",
 		record0.BchRefundTxHash)
 	require.Equal(t, Sbch2BchStatusBchRefunded, record0.Status)
 }
@@ -1191,6 +1224,8 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 		sbchAddr:     testEvmAddr,
 		sbchTimeLock: _sbchTimeLock,
 		isSlaveMode:  true,
+		bchPrice:     big.NewInt(1e18),
+		sbchPrice:    big.NewInt(1e18),
 	}
 
 	_bot.scanBchBlocks()
@@ -1202,4 +1237,5 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 	bchLockedRecords, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
 	require.NoError(t, err)
 	require.Len(t, bchLockedRecords, 1)
+	require.Equal(t, uint64(12345678), bchLockedRecords[0].BchLockedValue)
 }

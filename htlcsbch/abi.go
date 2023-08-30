@@ -193,9 +193,14 @@ const (
               "type": "uint16"
             },
             {
-              "internalType": "uint16",
-              "name": "feeBPS",
-              "type": "uint16"
+              "internalType": "uint256",
+              "name": "bchPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "sbchPrice",
+              "type": "uint256"
             },
             {
               "internalType": "uint256",
@@ -292,77 +297,82 @@ const (
       "inputs": [
         {
           "internalType": "address",
-          "name": "",
+          "name": "addr",
           "type": "address"
         }
       ],
-      "name": "marketMakers",
+      "name": "marketMakerByAddress",
       "outputs": [
-        {
-          "internalType": "address",
-          "name": "addr",
-          "type": "address"
-        },
-        {
-          "internalType": "uint64",
-          "name": "retiredAt",
-          "type": "uint64"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "intro",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes20",
-          "name": "bchPkh",
-          "type": "bytes20"
-        },
-        {
-          "internalType": "uint16",
-          "name": "bchLockTime",
-          "type": "uint16"
-        },
-        {
-          "internalType": "uint32",
-          "name": "sbchLockTime",
-          "type": "uint32"
-        },
-        {
-          "internalType": "uint16",
-          "name": "penaltyBPS",
-          "type": "uint16"
-        },
-        {
-          "internalType": "uint16",
-          "name": "feeBPS",
-          "type": "uint16"
-        },
-        {
-          "internalType": "uint256",
-          "name": "minSwapAmt",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "maxSwapAmt",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "stakedValue",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "statusChecker",
-          "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "unavailable",
-          "type": "bool"
-        }
+		{
+		  "internalType": "address",
+		  "name": "addr",
+		  "type": "address"
+		},
+		{
+		  "internalType": "uint64",
+		  "name": "retiredAt",
+		  "type": "uint64"
+		},
+		{
+		  "internalType": "bytes32",
+		  "name": "intro",
+		  "type": "bytes32"
+		},
+		{
+		  "internalType": "bytes20",
+		  "name": "bchPkh",
+		  "type": "bytes20"
+		},
+		{
+		  "internalType": "uint16",
+		  "name": "bchLockTime",
+		  "type": "uint16"
+		},
+		{
+		  "internalType": "uint32",
+		  "name": "sbchLockTime",
+		  "type": "uint32"
+		},
+		{
+		  "internalType": "uint16",
+		  "name": "penaltyBPS",
+		  "type": "uint16"
+		},
+		{
+		  "internalType": "uint256",
+		  "name": "bchPrice",
+		  "type": "uint256"
+		},
+		{
+		  "internalType": "uint256",
+		  "name": "sbchPrice",
+		  "type": "uint256"
+		},
+		{
+		  "internalType": "uint256",
+		  "name": "minSwapAmt",
+		  "type": "uint256"
+		},
+		{
+		  "internalType": "uint256",
+		  "name": "maxSwapAmt",
+		  "type": "uint256"
+		},
+		{
+		  "internalType": "uint256",
+		  "name": "stakedValue",
+		  "type": "uint256"
+		},
+		{
+		  "internalType": "address",
+		  "name": "statusChecker",
+		  "type": "address"
+		},
+		{
+		  "internalType": "bool",
+		  "name": "unavailable",
+		  "type": "bool"
+		}
       ],
       "stateMutability": "view",
       "type": "function"
@@ -403,9 +413,14 @@ const (
           "type": "uint16"
         },
         {
-          "internalType": "uint16",
-          "name": "_feeBPS",
-          "type": "uint16"
+          "internalType": "uint256",
+          "name": "_bchPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_sbchPrice",
+          "type": "uint256"
         },
         {
           "internalType": "uint256",
@@ -429,13 +444,7 @@ const (
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_delay",
-          "type": "uint256"
-        }
-      ],
+      "inputs": [],
       "name": "retireMarketMaker",
       "outputs": [],
       "stateMutability": "nonpayable",
@@ -552,6 +561,16 @@ const (
           "internalType": "bytes32",
           "name": "_intro",
           "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_bchPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_sbchPrice",
+          "type": "uint256"
         }
       ],
       "name": "updateMarketMaker",
@@ -585,7 +604,8 @@ var (
        uint16  bchLockTime;   // BCH HTLC lock time (in blocks)
        uint32  sbchLockTime;  // sBCH HTLC lock time (in seconds)
        uint16  penaltyBPS;    // refund penalty ratio (in BPS)
-       uint16  feeBPS;        // service fee ratio (in BPS)
+       uint256 bchPrice;      // BCH price (in sBCH)
+       uint256 sbchPrice;     // sBCH price (in BCH)
        uint256 minSwapAmt;    //
        uint256 maxSwapAmt;    //
        uint256 stakedValue;   // to prevent spam bots
@@ -602,7 +622,8 @@ type MarketMakerInfo struct {
 	BchLockTime  uint16
 	SbchLockTime uint32
 	PenaltyBPS   uint16
-	FeeBPS       uint16
+	BchPrice     *big.Int
+	SbchPrice    *big.Int
 	MinSwapAmt   *big.Int
 	MaxSwapAmt   *big.Int
 	StakedValue  *big.Int
@@ -671,16 +692,16 @@ func UnpackGetSwapState(data []byte) (uint8, error) {
 }
 
 func PackGetMarketMaker(addr common.Address) ([]byte, error) {
-	// mapping (address => MarketMaker) public marketMakers;
-	return htlcAbi.Pack("marketMakers", addr)
+	// function marketMakerByAddress(address addr) public view returns (MarketMaker memory)
+	return htlcAbi.Pack("marketMakerByAddress", addr)
 }
 func UnpackGetMarketMaker(data []byte) (*MarketMakerInfo, error) {
-	result, err := htlcAbi.Unpack("marketMakers", data)
+	result, err := htlcAbi.Unpack("marketMakerByAddress", data)
 	if err != nil {
 		return nil, err
 	}
-	if len(result) != 13 {
-		return nil, fmt.Errorf("expected fields: 12, got: %d", len(result))
+	if len(result) != 14 {
+		return nil, fmt.Errorf("expected fields: 14, got: %d", len(result))
 	}
 
 	ok := false
@@ -707,22 +728,25 @@ func UnpackGetMarketMaker(data []byte) (*MarketMakerInfo, error) {
 	if mm.PenaltyBPS, ok = result[6].(uint16); !ok {
 		return nil, fmt.Errorf("failed to cast penaltyBPS")
 	}
-	if mm.FeeBPS, ok = result[7].(uint16); !ok {
-		return nil, fmt.Errorf("failed to cast feeBPS")
+	if mm.BchPrice, ok = result[7].(*big.Int); !ok {
+		return nil, fmt.Errorf("failed to cast bchPrice")
 	}
-	if mm.MinSwapAmt, ok = result[8].(*big.Int); !ok {
+	if mm.SbchPrice, ok = result[8].(*big.Int); !ok {
+		return nil, fmt.Errorf("failed to cast sbchPrice")
+	}
+	if mm.MinSwapAmt, ok = result[9].(*big.Int); !ok {
 		return nil, fmt.Errorf("failed to cast minSwapAmt")
 	}
-	if mm.MaxSwapAmt, ok = result[9].(*big.Int); !ok {
+	if mm.MaxSwapAmt, ok = result[10].(*big.Int); !ok {
 		return nil, fmt.Errorf("failed to cast maxSwapAmt")
 	}
-	if mm.StakedValue, ok = result[10].(*big.Int); !ok {
+	if mm.StakedValue, ok = result[11].(*big.Int); !ok {
 		return nil, fmt.Errorf("failed to cast stakedValue")
 	}
-	if mm.Checker, ok = result[11].(common.Address); !ok {
+	if mm.Checker, ok = result[12].(common.Address); !ok {
 		return nil, fmt.Errorf("failed to cast checker")
 	}
-	if mm.Unavailable, ok = result[12].(bool); !ok {
+	if mm.Unavailable, ok = result[13].(bool); !ok {
 		return nil, fmt.Errorf("failed to cast unavailable")
 	}
 
