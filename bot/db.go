@@ -19,6 +19,7 @@ const (
 	Bch2SbchStatusBchUnlocked
 	Bch2SbchStatusSbchRefunded
 	Bch2SbchStatusTooLateToLockSbch
+	Bch2SbchStatusPriceChanged
 )
 
 const (
@@ -28,6 +29,7 @@ const (
 	Sbch2BchStatusSbchUnlocked
 	Sbch2BchStatusBchRefunded
 	Sbch2BchStatusTooLateToLockBch
+	Sbch2BchStatusPriceChanged
 )
 
 type LastHeights struct {

@@ -886,6 +886,17 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 	for _, record := range records {
 		log.Info("handle BCH user deposit: ", toJSON(record))
 
+		if record.BchPrice > bot.bchPrice {
+			log.Infof("BCH price changed, expected price: %d, current price: %d",
+				record.BchPrice, bot.bchPrice)
+			record.Status = Bch2SbchStatusPriceChanged
+			err = bot.db.updateBch2SbchRecord(record)
+			if err != nil {
+				bot.logError("DB error, failed to update status of BCH2SBCH record: ", err)
+			}
+			continue
+		}
+
 		//confirmations := currBlockNum - int64(record.BchLockHeight) + 1
 		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
 		if err != nil {
@@ -909,7 +920,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 
 		sbchTimeLock := bchTimeLockToSeconds(record.TimeLock) / 2
 		// val * bchPrice / 1e8
-		sbchVal := mulByPrice(record.Value, bot.bchPrice)
+		sbchVal := mulByPrice(record.Value, record.BchPrice)
 		log.Info("sbchTimeLock: ", sbchTimeLock,
 			" , bchPrice: ", bot.bchPrice, " , sbchVal: ", sbchVal)
 
@@ -967,8 +978,19 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 	for _, record := range records {
 		log.Info("SBCH2BCH record: ", toJSON(record))
 
+		if record.SbchPrice > bot.sbchPrice {
+			log.Infof("sBCH price changed, expected price: %d, current price: %d",
+				record.SbchPrice, bot.sbchPrice)
+			record.Status = Sbch2BchStatusPriceChanged
+			err = bot.db.updateSbch2BchRecord(record)
+			if err != nil {
+				bot.logError("DB error, failed to update status of SBCH2BCH record: ", err)
+			}
+			continue
+		}
+
 		// val * sbchPrice / 1e8
-		bchVal := int64(mulByPrice(record.Value, bot.sbchPrice))
+		bchVal := int64(mulByPrice(record.Value, record.SbchPrice))
 		utxos, err := bot.bchCli.getUTXOs(bchVal+5000, 10)
 		if err != nil {
 			bot.logError("failed to get UTXOs: ", err)
