@@ -77,6 +77,12 @@ const (
           "internalType": "uint16",
           "name": "_penaltyBPS",
           "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "_expectedPrice",
+          "type": "uint256"
         }
       ],
       "name": "Lock",
@@ -286,6 +292,11 @@ const (
           "internalType": "bool",
           "name": "_receiverIsMM",
           "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_expectedPrice",
+          "type": "uint256"
         }
       ],
       "name": "lock",
@@ -655,11 +666,15 @@ func PackLock(
 	                 uint256 _validPeriod,
 	                 bytes20 _receiverBchPkh,
 	                 uint16  _penaltyBPS,
-	                 bool    _receiverIsMM) public payable
+	                 bool    _receiverIsMM,
+	                 uint256 _expectedPrice) public payable {
 	*/
 	var penaltyBPS uint16 = 0
+	var receiverIsMM = false
+	var expectedPrice = big.NewInt(1e18)
 	return htlcAbi.Pack("lock",
-		recipient, hashLock, big.NewInt(int64(timeLock)), bchAddr, penaltyBPS, false)
+		recipient, hashLock, big.NewInt(int64(timeLock)), bchAddr,
+		penaltyBPS, receiverIsMM, expectedPrice)
 }
 
 func PackUnlock(hashLock, secret common.Hash) ([]byte, error) {

@@ -257,7 +257,7 @@ func (c *HtlcCovenant) makeLockTx(
 		return nil, fmt.Errorf("failed to creatte pkScript: %w", err)
 	}
 
-	opRetScript, err := c.BuildOpRetPkScript(make([]byte, 20))
+	opRetScript, err := c.BuildOpRetPkScript(make([]byte, 20), 1e8)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build OP_RETURN: %w", err)
 	}
@@ -321,8 +321,9 @@ func (c *HtlcCovenant) BuildRefundSigScript() ([]byte, error) {
 		Script()
 }
 
-// OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address>
-func (c *HtlcCovenant) BuildOpRetPkScript(sbchUserAddr []byte) ([]byte, error) {
+// OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address> <expected price>
+func (c *HtlcCovenant) BuildOpRetPkScript(sbchUserAddr []byte,
+	expectedPrice uint64) ([]byte, error) {
 	return txscript.NewScriptBuilder().
 		AddOp(txscript.OP_RETURN).
 		AddData([]byte(protoID)).
@@ -332,12 +333,18 @@ func (c *HtlcCovenant) BuildOpRetPkScript(sbchUserAddr []byte) ([]byte, error) {
 		AddData(encodeBE16(c.expiration)).
 		AddData(encodeBE16(c.penaltyBPS)).
 		AddData(sbchUserAddr).
+		AddData(encodeBE64(expectedPrice)).
 		Script()
 }
 
 func encodeBE16(n uint16) []byte {
 	buf := [2]byte{}
 	binary.BigEndian.PutUint16(buf[:], n)
+	return buf[:]
+}
+func encodeBE64(n uint64) []byte {
+	buf := [8]byte{}
+	binary.BigEndian.PutUint64(buf[:], n)
 	return buf[:]
 }
 

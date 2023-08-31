@@ -26,6 +26,7 @@ type HtlcLockInfo struct {
 	SenderEvmAddr hexutil.Bytes // 20 bytes
 	ScriptHash    hexutil.Bytes // 20 bytes, hash160
 	Value         uint64        // in sats
+	ExpectedPrice uint64        // 8 decimals
 }
 
 type HtlcUnlockInfo struct {
@@ -93,7 +94,7 @@ func isHtlcLockTx(tx btcjson.TxRawResult) *HtlcLockInfo {
 }
 
 // https://github.com/bitcoincashorg/bitcoincash.org/blob/master/spec/op_return-prefix-guideline.md
-// OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address>
+// OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address> <expected price>
 func getHtlcLockInfo(pkScript []byte) *HtlcLockInfo {
 	if len(pkScript) == 0 ||
 		pkScript[0] != txscript.OP_RETURN {
@@ -102,14 +103,15 @@ func getHtlcLockInfo(pkScript []byte) *HtlcLockInfo {
 
 	retData, err := txscript.PushedData(pkScript)
 	if err != nil ||
-		len(retData) != 7 ||
+		len(retData) != 8 ||
 		string(retData[0]) != protoID || // "SBAS"
 		len(retData[1]) != 20 || // recipient pkh
 		len(retData[2]) != 20 || // sender pkh
 		len(retData[3]) != 32 || // hash lock
 		len(retData[4]) != 2 || // expiration
 		len(retData[5]) != 2 || // penalty bps
-		len(retData[6]) != 20 { // sender evm addr
+		len(retData[6]) != 20 || // sender evm addr
+		len(retData[7]) != 8 { // expected price
 
 		return nil
 	}
@@ -121,6 +123,7 @@ func getHtlcLockInfo(pkScript []byte) *HtlcLockInfo {
 		Expiration:    binary.BigEndian.Uint16(retData[4]),
 		PenaltyBPS:    binary.BigEndian.Uint16(retData[5]),
 		SenderEvmAddr: retData[6],
+		ExpectedPrice: binary.BigEndian.Uint64(retData[7]),
 	}
 }
 

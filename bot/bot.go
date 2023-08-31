@@ -204,10 +204,10 @@ type MarketMakerBot struct {
 	penaltyRatio uint16 // in BPS
 
 	// bot params
-	bchPrice              *big.Int // in sBCH, 18 decimals
-	sbchPrice             *big.Int // in BCH, 18 decimals
-	minSwapVal            uint64   // in sats
-	maxSwapVal            uint64   // in sats
+	bchPrice              uint64 // in sBCH, 8 decimals
+	sbchPrice             uint64 // in BCH, 8 decimals
+	minSwapVal            uint64 // in sats
+	maxSwapVal            uint64 // in sats
 	bchConfirmations      uint8
 	bchLockMinerFeeRate   uint64 // sats/byte
 	bchUnlockMinerFeeRate uint64 // sats/byte
@@ -298,8 +298,8 @@ func NewBot(
 		bchTimeLock:           botInfo.BchLockTime,
 		sbchTimeLock:          botInfo.SbchLockTime,
 		penaltyRatio:          botInfo.PenaltyBPS,
-		bchPrice:              botInfo.BchPrice,
-		sbchPrice:             botInfo.SbchPrice,
+		bchPrice:              weiToSats(botInfo.BchPrice),
+		sbchPrice:             weiToSats(botInfo.SbchPrice),
 		minSwapVal:            weiToSats(botInfo.MinSwapAmt),
 		maxSwapVal:            weiToSats(botInfo.MaxSwapAmt),
 		bchLockMinerFeeRate:   bchLockMinerFeeRate,
@@ -429,6 +429,7 @@ func (bot *MarketMakerBot) GetUTXOs() ([]btcjson.ListUnspentResult, error) {
 func (bot *MarketMakerBot) Loop() {
 	for {
 		log.Info("---------- ", time.Now(), "' ----------")
+		bot.updatePrices()
 		bot.refundLockedSbch()
 		gotNewBlocks := bot.scanBchBlocks()
 		bot.refundLockedBCH(gotNewBlocks)
@@ -437,7 +438,6 @@ func (bot *MarketMakerBot) Loop() {
 		bot.scanSbchEvents()
 		bot.handleSbchUserDeposits()
 		bot.unlockSbchUserDeposits()
-		bot.updatePrices()
 		time.Sleep(2 * time.Second)
 	}
 }
@@ -457,8 +457,8 @@ func (bot *MarketMakerBot) updatePrices() {
 	}
 
 	log.Info("old BCH price: ", bot.bchPrice, " , old sBCH price: ", bot.sbchPrice)
-	bot.bchPrice = botInfo.BchPrice
-	bot.sbchPrice = botInfo.SbchPrice
+	bot.bchPrice = weiToSats(botInfo.BchPrice)
+	bot.sbchPrice = weiToSats(botInfo.SbchPrice)
 	log.Info("new BCH price: ", bot.bchPrice, " , new sBCH price: ", bot.sbchPrice)
 }
 
@@ -553,11 +553,17 @@ func (bot *MarketMakerBot) handleBchDepositTxB2S(h uint64, deposit *htlcbch.Htlc
 			deposit.Value, bot.minSwapVal, bot.maxSwapVal)
 		return
 	}
+	if deposit.ExpectedPrice > bot.bchPrice {
+		log.Infof("expected BCH price is too high: %d > %d",
+			deposit.ExpectedPrice, bot.bchPrice)
+		return
+	}
 
 	err := bot.db.addBch2SbchRecord(&Bch2SbchRecord{
 		BchLockHeight:  h,
 		BchLockTxHash:  deposit.TxHash,
 		Value:          deposit.Value,
+		BchPrice:       deposit.ExpectedPrice,
 		RecipientPkh:   toHex(deposit.RecipientPkh),
 		SenderPkh:      toHex(deposit.SenderPkh),
 		HashLock:       toHex(deposit.HashLock),
@@ -593,7 +599,7 @@ func (bot *MarketMakerBot) handleBchDepositTxS2B(h uint64, deposit *htlcbch.Htlc
 
 	// TODO: add more checks
 
-	record.UpdateStatusToBchLocked(deposit.TxHash, deposit.Value)
+	record.UpdateStatusToBchLocked(deposit.TxHash)
 	err = bot.db.updateSbch2BchRecord(record)
 	if err != nil {
 		bot.logError("DB error, failed to update status of SBCH2BCH record: ", err)
@@ -745,6 +751,13 @@ func (bot *MarketMakerBot) handleSbchLockEventS2B(ethLog gethtypes.Log) {
 		return
 	}
 
+	expectedPrice := weiToSats(lockLog.ExpectedPrice)
+	if expectedPrice > bot.sbchPrice {
+		log.Infof("expected sBCH price is too high: %d > %d",
+			expectedPrice, bot.sbchPrice)
+		return
+	}
+
 	log.Info("got a sBCH Lock log: ", toJSON(lockLog))
 	bchTimeLock := sbchTimeLockToBlocks(sbchTimeLock) / 2
 	covenant, err := htlcbch.NewMainnetCovenant(bot.bchPkh,
@@ -764,6 +777,7 @@ func (bot *MarketMakerBot) handleSbchLockEventS2B(ethLog gethtypes.Log) {
 		SbchLockTime:    lockLog.CreatedTime,
 		SbchLockTxHash:  toHex(ethLog.TxHash[:]),
 		Value:           valSats,
+		SbchPrice:       expectedPrice,
 		SbchSenderAddr:  toHex(lockLog.LockerAddr[:]),
 		BchRecipientPkh: toHex(lockLog.BchRecipientPkh[:]),
 		HashLock:        toHex(lockLog.HashLock[:]),
@@ -894,9 +908,8 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 		}
 
 		sbchTimeLock := bchTimeLockToSeconds(record.TimeLock) / 2
-		sbchVal := big.NewInt(0).Div(
-			big.NewInt(0).Mul(big.NewInt(int64(record.Value)), bot.bchPrice),
-			big.NewInt(1e18)).Uint64()
+		// val * bchPrice / 1e8
+		sbchVal := mulByPrice(record.Value, bot.bchPrice)
 		log.Info("sbchTimeLock: ", sbchTimeLock,
 			" , bchPrice: ", bot.bchPrice, " , sbchVal: ", sbchVal)
 
@@ -954,9 +967,8 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 	for _, record := range records {
 		log.Info("SBCH2BCH record: ", toJSON(record))
 
-		bchVal := big.NewInt(0).Div(
-			big.NewInt(0).Mul(big.NewInt(int64(record.Value)), bot.sbchPrice),
-			big.NewInt(1e18)).Int64()
+		// val * sbchPrice / 1e8
+		bchVal := int64(mulByPrice(record.Value, bot.sbchPrice))
 		utxos, err := bot.bchCli.getUTXOs(bchVal+5000, 10)
 		if err != nil {
 			bot.logError("failed to get UTXOs: ", err)
@@ -1034,7 +1046,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 		}
 		log.Info("BCH tx sent, hash: ", txHash.String())
 
-		record.UpdateStatusToBchLocked(txHash.String(), uint64(bchVal))
+		record.UpdateStatusToBchLocked(txHash.String())
 		err = bot.db.updateSbch2BchRecord(record)
 		if err != nil {
 			bot.logError("DB error, failed to update status of SBCH2BCH record: ", err)
@@ -1223,10 +1235,12 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 			continue
 		}
 
+		// val * sbchPrice / 1e8
+		bchVal := int64(mulByPrice(record.Value, record.SbchPrice))
 		tx, err := covenant.MakeRefundTx(
 			gethcmn.FromHex(record.BchLockTxHash),
 			0,
-			int64(record.BchLockedValue),
+			bchVal,
 			bot.bchRefundMinerFeeRate,
 		)
 		if err != nil {
@@ -1347,6 +1361,12 @@ func utxoAmtToSats(amt float64) int64 {
 }
 func satsToUtxoAmt(val uint64) float64 {
 	return float64(val) / 1e8
+}
+
+// amt * price / 1e8
+func mulByPrice(amt, price uint64) uint64 {
+	prod := big.NewInt(0).Mul(big.NewInt(int64(amt)), big.NewInt(int64(price)))
+	return big.NewInt(0).Div(prod, big.NewInt(1e8)).Uint64()
 }
 
 func toHex(bs []byte) string {

@@ -41,6 +41,7 @@ type Bch2SbchRecord struct {
 	BchLockHeight    uint64         `gorm:"not null"` // got from tx
 	BchLockTxHash    string         `gorm:"unique"`   // got from tx
 	Value            uint64         `gorm:"not null"` // got from tx, in Sats
+	BchPrice         uint64         `gorm:"not null"` // got from tx, 8 decimals
 	RecipientPkh     string         `gorm:"not null"` // got from retData
 	SenderPkh        string         `gorm:"not null"` // got from retData
 	HashLock         string         `gorm:"unique"`   // got from retData, in Blocks
@@ -62,6 +63,7 @@ type Sbch2BchRecord struct {
 	SbchLockTime     uint64         `gorm:"not null"` // got from event
 	SbchLockTxHash   string         `gorm:"unique"`   // got from event
 	Value            uint64         `gorm:"not null"` // got from txValue, in Sats
+	SbchPrice        uint64         `gorm:"not null"` // got from event, 8 decimals
 	SbchSenderAddr   string         `gorm:"not null"` // got from event
 	BchRecipientPkh  string         `gorm:"not null"` // got from event
 	HashLock         string         `gorm:"unique"`   // got from event
@@ -69,7 +71,6 @@ type Sbch2BchRecord struct {
 	PenaltyBPS       uint16         `gorm:"not null"` // got from event
 	HtlcScriptHash   string         `gorm:"not null"` // calculated by bot
 	BchLockTxHash    string         ``                // set when status changed to Sbch2BchStatusBchLocked
-	BchLockedValue   uint64         ``                // set when status changed to Sbch2BchStatusBchLocked
 	BchUnlockTxHash  string         ``                // set when status changed to Sbch2BchStatusSecretRevealed
 	Secret           string         ``                // set when status changed to Sbch2BchStatusSecretRevealed
 	SbchUnlockTxHash string         ``                // set when status changed to Sbch2BchStatusSbchUnlocked
@@ -100,10 +101,9 @@ func (record *Bch2SbchRecord) UpdateStatusToSbchRefunded(sbchRefundTxHash string
 	return record
 }
 
-func (record *Sbch2BchRecord) UpdateStatusToBchLocked(bchLockTxHash string, bchLockedVal uint64) *Sbch2BchRecord {
+func (record *Sbch2BchRecord) UpdateStatusToBchLocked(bchLockTxHash string) *Sbch2BchRecord {
 	record.Status = Sbch2BchStatusBchLocked
 	record.BchLockTxHash = bchLockTxHash
-	record.BchLockedValue = bchLockedVal
 	return record
 }
 func (record *Sbch2BchRecord) UpdateStatusToSecretRevealed(secret, bchUnlockTxHash string) *Sbch2BchRecord {

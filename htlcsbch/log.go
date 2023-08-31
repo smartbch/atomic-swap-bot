@@ -16,6 +16,7 @@ type LockLog struct {
 	BchRecipientPkh common.Address
 	CreatedTime     uint64
 	PenaltyBPS      uint16
+	ExpectedPrice   *big.Int
 }
 
 type UnlockLog struct {
@@ -32,7 +33,7 @@ type RefundLog struct {
 func ParseHtlcLockLog(log types.Log) *LockLog {
 	if len(log.Topics) != 3 ||
 		log.Topics[0] != LockEventId ||
-		len(log.Data) != 32*6 {
+		len(log.Data) != 32*7 {
 		//log.Info("invalid topics or data")
 		return nil
 	}
@@ -46,6 +47,7 @@ func ParseHtlcLockLog(log types.Log) *LockLog {
 		BchRecipientPkh: common.BytesToAddress(log.Data[96:128][:20]),
 		CreatedTime:     bytesToBI(log.Data[128:160]).Uint64(),
 		PenaltyBPS:      uint16(bytesToBI(log.Data[160:192]).Uint64()),
+		ExpectedPrice:   bytesToBI(log.Data[192:224]),
 	}
 }
 

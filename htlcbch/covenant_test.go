@@ -168,6 +168,6 @@ func TestMakeLockTx(t *testing.T) {
 	feeRate := uint64(2)
 	tx, err := c.MakeLockTx(testSenderWIF.PrivKey, inputs, outAmt, feeRate)
 	require.NoError(t, err)
-	require.Len(t, MsgTxToBytes(tx), 341)
+	require.Len(t, MsgTxToBytes(tx), 350)
 	//require.Equal(t, "?", MsgTxToHex(tx))
 }
