@@ -18,8 +18,10 @@ func TestABI(t *testing.T) {
 	require.Equal(t, "0x3fbd469ec3a5ce074f975f76ce27e727ba21c99176917b97ae2e713695582a12",
 		RefundEventId.String())
 	require.Equal(t, "6433892c", hex.EncodeToString(htlcAbi.Methods["lock"].ID))
-	require.Equal(t, "c8525c09", hex.EncodeToString(htlcAbi.Methods["unlock"].ID))
-	require.Equal(t, "7249fbb6", hex.EncodeToString(htlcAbi.Methods["refund"].ID))
+	require.Equal(t, "592fe6cc", hex.EncodeToString(htlcAbi.Methods["unlock"].ID))
+	require.Equal(t, "37b6ee7e", hex.EncodeToString(htlcAbi.Methods["refund"].ID))
+	require.Equal(t, "b90a2883", hex.EncodeToString(htlcAbi.Methods["getSwapState"].ID))
+	require.Equal(t, "e670ce1f", hex.EncodeToString(htlcAbi.Methods["marketMakerByAddress"].ID))
 }
 
 func TestPackLock(t *testing.T) {
@@ -42,30 +44,36 @@ func TestPackLock(t *testing.T) {
 }
 
 func TestPackUnlock(t *testing.T) {
+	sender := common.Address{'s', 'e', 'n', 'd', 'e', 'r'}
 	hashLock := common.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k', 0xaa}
 	secret := common.Hash{'s', 'e', 'c', 'r', 'e', 't', 0xbb}
-	data, err := PackUnlock(hashLock, secret)
+	data, err := PackUnlock(sender, hashLock, secret)
 	require.NoError(t, err)
-	require.Equal(t, strings.ReplaceAll(`c8525c09
+	require.Equal(t, strings.ReplaceAll(`592fe6cc
+00000000000000000000000073656e6465720000000000000000000000000000
 686173686c6f636baa0000000000000000000000000000000000000000000000
 736563726574bb00000000000000000000000000000000000000000000000000
 `, "\n", ""), hex.EncodeToString(data))
 }
 
 func TestPackRefund(t *testing.T) {
+	sender := common.Address{'s', 'e', 'n', 'd', 'e', 'r'}
 	hashLock := common.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k', 0xaa}
-	data, err := PackRefund(hashLock)
+	data, err := PackRefund(sender, hashLock)
 	require.NoError(t, err)
-	require.Equal(t, strings.ReplaceAll(`7249fbb6
+	require.Equal(t, strings.ReplaceAll(`37b6ee7e
+00000000000000000000000073656e6465720000000000000000000000000000
 686173686c6f636baa0000000000000000000000000000000000000000000000
 `, "\n", ""), hex.EncodeToString(data))
 }
 
 func TestPackGetSwapState(t *testing.T) {
+	sender := common.Address{'s', 'e', 'n', 'd', 'e', 'r'}
 	hashLock := common.Hash{'h', 'a', 's', 'h', 'l', 'o', 'c', 'k', 0xaa}
-	data, err := PackGetSwapState(hashLock)
+	data, err := PackGetSwapState(sender, hashLock)
 	require.NoError(t, err)
-	require.Equal(t, strings.ReplaceAll(`db9b6d06
+	require.Equal(t, strings.ReplaceAll(`b90a2883
+00000000000000000000000073656e6465720000000000000000000000000000
 686173686c6f636baa0000000000000000000000000000000000000000000000
 `, "\n", ""), hex.EncodeToString(data))
 }

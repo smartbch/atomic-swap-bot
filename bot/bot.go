@@ -196,7 +196,7 @@ type MarketMakerBot struct {
 
 	// sBCH key
 	sbchPrivKey *ecdsa.PrivateKey
-	sbchAddr    gethcmn.Address
+	sbchAddr    gethcmn.Address // master address
 
 	// HTLC params
 	bchTimeLock  uint16 // in blocks
@@ -253,7 +253,7 @@ func NewBot(
 	if err != nil {
 		return nil, fmt.Errorf("faield to create BCH RPC client: %w", err)
 	}
-	sbchCli, err := newSbchClient(sbchRpcUrl, 5*time.Second, sbchPrivKey, sbchAddr, sbchHtlcAddr,
+	sbchCli, err := newSbchClient(sbchRpcUrl, 5*time.Second, sbchPrivKey, sbchHtlcAddr,
 		sbchGasPrice)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sBCH RPC client: %w", err)
@@ -1178,17 +1178,18 @@ func (bot *MarketMakerBot) unlockSbchUserDeposits() {
 			}
 		}
 
+		sender := gethcmn.HexToAddress(record.SbchSenderAddr)
 		hashLock := gethcmn.HexToHash(record.HashLock)
 		secret := gethcmn.HexToHash(record.Secret)
 
 		txHashStr := "?"
-		if txHash, err := bot.sbchCli.unlockSbchFromHtlc(hashLock, secret); err == nil {
+		if txHash, err := bot.sbchCli.unlockSbchFromHtlc(sender, hashLock, secret); err == nil {
 			txHashStr = toHex(txHash[:])
 			log.Info("sBCH unlock tx sent, hash: ", txHashStr)
 		} else {
 			bot.logError("RPC error, failed to unlock sBCH: ", err)
 
-			state, _ := bot.sbchCli.getSwapState(hashLock)
+			state, _ := bot.sbchCli.getSwapState(sender, hashLock)
 			if state == SwapUnlocked {
 				log.Info("swap is unlockd")
 			} else {
@@ -1337,13 +1338,13 @@ func (bot *MarketMakerBot) refundLockedSbch() {
 		hashLock := gethcmn.HexToHash(record.HashLock)
 
 		txHashStr := "?"
-		if txHash, err := bot.sbchCli.refundSbchFromHtlc(hashLock); err == nil {
+		if txHash, err := bot.sbchCli.refundSbchFromHtlc(bot.sbchAddr, hashLock); err == nil {
 			txHashStr = toHex(txHash.Bytes())
 			log.Info("sBCH refund tx sent, hash: ", txHashStr)
 		} else {
 			bot.logError("RPC error, failed to refund sBCH: ", err)
 
-			state, _ := bot.sbchCli.getSwapState(hashLock)
+			state, _ := bot.sbchCli.getSwapState(bot.sbchAddr, hashLock)
 			if state == SwapRefunded {
 				log.Info("swap is refunded")
 			} else {

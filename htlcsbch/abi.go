@@ -245,6 +245,11 @@ const (
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
           "internalType": "bytes32",
           "name": "secretLock",
           "type": "bytes32"
@@ -391,6 +396,11 @@ const (
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
           "internalType": "bytes32",
           "name": "_secretLock",
           "type": "bytes32"
@@ -482,6 +492,11 @@ const (
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
           "internalType": "bytes32",
           "name": "",
           "type": "bytes32"
@@ -543,6 +558,11 @@ const (
           "internalType": "bytes32",
           "name": "secretKey",
           "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "expectedPrice",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -550,6 +570,11 @@ const (
     },
     {
       "inputs": [
+        {
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
         {
           "internalType": "bytes32",
           "name": "_secretLock",
@@ -677,19 +702,19 @@ func PackLock(
 		penaltyBPS, receiverIsMM, expectedPrice)
 }
 
-func PackUnlock(hashLock, secret common.Hash) ([]byte, error) {
-	// function unlock(bytes32 _secretLock, bytes32 _secretKey) public
-	return htlcAbi.Pack("unlock", hashLock, secret)
+func PackUnlock(sender common.Address, hashLock, secret common.Hash) ([]byte, error) {
+	// function unlock(address sender, bytes32 _secretLock, bytes32 _secretKey) public
+	return htlcAbi.Pack("unlock", sender, hashLock, secret)
 }
 
-func PackRefund(hashLock common.Hash) ([]byte, error) {
-	// function refund(bytes32 _secretLock) public
-	return htlcAbi.Pack("refund", hashLock)
+func PackRefund(sender common.Address, hashLock common.Hash) ([]byte, error) {
+	// function refund(address sender, bytes32 _secretLock) public
+	return htlcAbi.Pack("refund", sender, hashLock)
 }
 
-func PackGetSwapState(hashLock common.Hash) ([]byte, error) {
-	// function getSwapState(bytes32 secretLock) public view returns (States)
-	return htlcAbi.Pack("getSwapState", hashLock)
+func PackGetSwapState(sender common.Address, hashLock common.Hash) ([]byte, error) {
+	// function getSwapState(address sender, bytes32 secretLock) public view returns (States)
+	return htlcAbi.Pack("getSwapState", sender, hashLock)
 }
 func UnpackGetSwapState(data []byte) (uint8, error) {
 	result, err := htlcAbi.Unpack("getSwapState", data)
