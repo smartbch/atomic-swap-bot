@@ -37,9 +37,9 @@ type ISbchClient interface {
 	getTxTime(txHash common.Hash) (uint64, error)
 	getHtlcLogs(fromBlock, toBlock uint64) ([]types.Log, error)
 	lockSbchToHtlc(userEvmAddr common.Address, hashLock common.Hash, timeLock uint32, amt *big.Int) (*common.Hash, error)
-	unlockSbchFromHtlc(hashLock common.Hash, secret common.Hash) (*common.Hash, error)
-	refundSbchFromHtlc(hashLock common.Hash) (*common.Hash, error)
-	getSwapState(hashLock common.Hash) (uint8, error)
+	unlockSbchFromHtlc(senderAddr common.Address, hashLock common.Hash, secret common.Hash) (*common.Hash, error)
+	refundSbchFromHtlc(senderAddr common.Address, hashLock common.Hash) (*common.Hash, error)
+	getSwapState(senderAddr common.Address, hashLock common.Hash) (uint8, error)
 	getMarketMakerInfo(addr common.Address) (*htlcsbch.MarketMakerInfo, error)
 }
 
@@ -55,7 +55,7 @@ type SbchClient struct {
 
 func newSbchClient(
 	rawUrl string, timeout time.Duration,
-	privKey *ecdsa.PrivateKey, botAddr common.Address,
+	privKey *ecdsa.PrivateKey,
 	htlcAddr common.Address,
 	gasPrice *big.Int,
 ) (*SbchClient, error) {
@@ -64,6 +64,8 @@ func newSbchClient(
 	if err != nil {
 		return nil, err
 	}
+
+	botAddr := crypto.PubkeyToAddress(privKey.PublicKey)
 	return &SbchClient{
 		client:   client,
 		timeout:  timeout,
@@ -116,8 +118,8 @@ func (c *SbchClient) getHtlcLogs(fromBlock, toBlock uint64) ([]types.Log, error)
 	})
 }
 
-func (c *SbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
-	callData, err := htlcsbch.PackGetSwapState(hashLock)
+func (c *SbchClient) getSwapState(senderAddr common.Address, hashLock common.Hash) (uint8, error) {
+	callData, err := htlcsbch.PackGetSwapState(senderAddr, hashLock)
 	if err != nil {
 		return 0, err
 	}
@@ -186,6 +188,7 @@ func (c *SbchClient) lockSbchToHtlc(
 
 // call unlock()
 func (c *SbchClient) unlockSbchFromHtlc(
+	senderAddr common.Address,
 	hashLock common.Hash,
 	secret common.Hash,
 ) (*common.Hash, error) {
@@ -193,7 +196,7 @@ func (c *SbchClient) unlockSbchFromHtlc(
 		", hashLock: ", hashLock.String(),
 		", secret: ", secret.String())
 
-	data, err := htlcsbch.PackUnlock(hashLock, secret)
+	data, err := htlcsbch.PackUnlock(senderAddr, hashLock, secret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack calldata: %w", err)
 	}
@@ -201,11 +204,14 @@ func (c *SbchClient) unlockSbchFromHtlc(
 }
 
 // call refund()
-func (c *SbchClient) refundSbchFromHtlc(hashLock common.Hash) (*common.Hash, error) {
+func (c *SbchClient) refundSbchFromHtlc(
+	senderAddr common.Address,
+	hashLock common.Hash,
+) (*common.Hash, error) {
 	log.Info("refund sBCH from HTLC",
 		", hashLock: ", hashLock.String())
 
-	data, err := htlcsbch.PackRefund(hashLock)
+	data, err := htlcsbch.PackRefund(senderAddr, hashLock)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack calldata: %w", err)
 	}
@@ -218,14 +224,13 @@ func (c *SbchClient) callHtlc(val *big.Int, data []byte) (*common.Hash, error) {
 		return nil, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 
-	myAddr := crypto.PubkeyToAddress(c.privKey.PublicKey)
-	nonce, err := c.getNonce(myAddr)
+	nonce, err := c.getNonce(c.botAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nonce: %w", err)
 	}
 
 	gasLimit, err := c.estimateGas(ethereum.CallMsg{
-		From:  myAddr,
+		From:  c.botAddr,
 		To:    &c.htlcAddr,
 		Value: val,
 		Data:  data,

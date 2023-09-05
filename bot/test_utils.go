@@ -33,12 +33,12 @@ func newP2SHPkScript(pkh []byte) []byte {
 	return script
 }
 
-// OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address>
+// OP_RETURN "SBAS" <recipient pkh> <sender pkh> <hash lock> <expiration> <penalty bps> <sbch user address> <expected price>
 func newHtlcDepositOpRet(recipientPkh, senderPkh, hashLock []byte,
-	expiration, penaltyBPS uint16, evmAddr []byte) []byte {
+	expiration, penaltyBPS uint16, evmAddr []byte, expectedPrice uint64) []byte {
 
 	c, _ := htlcbch.NewTestnet3Covenant(senderPkh, recipientPkh, hashLock, expiration, penaltyBPS)
-	opRetScript, _ := c.BuildOpRetPkScript(evmAddr)
+	opRetScript, _ := c.BuildOpRetPkScript(evmAddr, expectedPrice)
 	return opRetScript
 }
 

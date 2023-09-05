@@ -28,6 +28,7 @@ func TestGetHtlcLockInfo(t *testing.T) {
 	expiration := gethcmn.FromHex("1234")
 	penaltyBPS := gethcmn.FromHex("5555")
 	sbchAddr := gethcmn.FromHex("ffffffffffffffffffffffffffffffffffffffff")
+	expectedPrice := gethcmn.FromHex("0000000005f5e100")
 	pkScript, _ := txscript.NewScriptBuilder().
 		AddOp(txscript.OP_RETURN).
 		AddData([]byte(protoID)).
@@ -37,12 +38,13 @@ func TestGetHtlcLockInfo(t *testing.T) {
 		AddData(expiration).
 		AddData(penaltyBPS).
 		AddData(sbchAddr).
+		AddData(expectedPrice).
 		Script()
 
 	c, err := NewTestnet3Covenant(senderPkh, recipientPkh, hashLock, 0x1234, 0x5555)
 	require.NoError(t, err)
 
-	pkScript2, err := c.BuildOpRetPkScript(sbchAddr)
+	pkScript2, err := c.BuildOpRetPkScript(sbchAddr, 1e8)
 	require.NoError(t, err)
 	require.Equal(t, pkScript, pkScript2)
 
@@ -55,10 +57,11 @@ func TestGetHtlcLockInfo(t *testing.T) {
 	require.Equal(t, uint16(0x1234), depositInfo.Expiration)
 	require.Equal(t, uint16(0x5555), depositInfo.PenaltyBPS)
 	require.Equal(t, "ffffffffffffffffffffffffffffffffffffffff", hex.EncodeToString(depositInfo.SenderEvmAddr))
+	require.Equal(t, uint64(1e8), depositInfo.ExpectedPrice)
 }
 
 func TestGetHtlcLockInfo2(t *testing.T) {
-	pkScript := "0x6a0453424153144d027fdd0585302264922bed58b8a84d38776ccb14a47165ef477c99a53cdeb846a7687a069d7df27c20ed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf302002402050014765fd1f0e3d125b36de29b5f88295a247814276e"
+	pkScript := "0x6a0453424153144d027fdd0585302264922bed58b8a84d38776ccb14a47165ef477c99a53cdeb846a7687a069d7df27c20ed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf302002402050014765fd1f0e3d125b36de29b5f88295a247814276e080000000005f5e100"
 	depositInfo := getHtlcLockInfo(gethcmn.FromHex(pkScript))
 	require.NotNil(t, depositInfo)
 	require.Equal(t, "4d027fdd0585302264922bed58b8a84d38776ccb", hex.EncodeToString(depositInfo.RecipientPkh))
@@ -67,6 +70,7 @@ func TestGetHtlcLockInfo2(t *testing.T) {
 	require.Equal(t, uint16(0x0024), depositInfo.Expiration)
 	require.Equal(t, uint16(0x0500), depositInfo.PenaltyBPS)
 	require.Equal(t, "765fd1f0e3d125b36de29b5f88295a247814276e", hex.EncodeToString(depositInfo.SenderEvmAddr))
+	require.Equal(t, uint64(1e8), depositInfo.ExpectedPrice)
 }
 
 func TestIsHtlcLockTx(t *testing.T) {
@@ -110,7 +114,7 @@ func TestIsHtlcLockTx(t *testing.T) {
 				"n": 1,
 				"scriptPubKey": {
 					"asm": "OP_RETURN 1396785747 92a9a3f7f0bbd5b6a66b95db86957de6277bc491 8b79ea99e6c418776a9c9d2c5dc074b4404c8a57 ed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf3 512 -29697 621e0b041d19b6472b1e991fe53d78af3c264fa8",
-					"hex": "6a04534241531492a9a3f7f0bbd5b6a66b95db86957de6277bc491148b79ea99e6c418776a9c9d2c5dc074b4404c8a5720ed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf30200020201f414621e0b041d19b6472b1e991fe53d78af3c264fa8",
+					"hex": "6a04534241531492a9a3f7f0bbd5b6a66b95db86957de6277bc491148b79ea99e6c418776a9c9d2c5dc074b4404c8a5720ed88bb4d5991f2f91939d37277c0f988bbf461c889cafbdd5384ecb881ce6bf30200020201f414621e0b041d19b6472b1e991fe53d78af3c264fa8080000000005f5e100",
 					"type": "nulldata"
 				}
 			},
@@ -144,6 +148,7 @@ func TestIsHtlcLockTx(t *testing.T) {
 	require.Equal(t, "621e0b041d19b6472b1e991fe53d78af3c264fa8", hex.EncodeToString(result.SenderEvmAddr))
 	require.Equal(t, "a8afaf6b99a5d5dfd359aa1bc0ef9a0bef0886c8", hex.EncodeToString(result.ScriptHash))
 	require.Equal(t, uint64(5000), result.Value)
+	require.Equal(t, uint64(1e8), result.ExpectedPrice)
 }
 
 func TestGetHtlcUnlockInfo(t *testing.T) {

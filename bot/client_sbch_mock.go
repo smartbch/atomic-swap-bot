@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/smartbch/atomic-swap-bot/htlcsbch"
 )
@@ -59,26 +60,31 @@ func (c *MockSbchClient) lockSbchToHtlc(
 	timeLock uint32,
 	amt *big.Int,
 ) (*common.Hash, error) {
+	log.Info("lockSbchToHtlc:", userEvmAddr, hashLock, timeLock, amt)
 	txHash := common.BytesToHash(reverseBytes(hashLock[:]))
 	return &txHash, nil
 }
 
 func (c *MockSbchClient) unlockSbchFromHtlc(
+	senderAddr common.Address,
 	hashLock common.Hash,
 	secret common.Hash,
 ) (*common.Hash, error) {
+	log.Info("unlockSbchFromHtlc:", senderAddr, hashLock, secret)
 	txHash := common.BytesToHash(reverseBytes(hashLock[:]))
 	return &txHash, nil
 }
 
 func (c *MockSbchClient) refundSbchFromHtlc(
+	senderAddr common.Address,
 	hashLock common.Hash,
 ) (*common.Hash, error) {
+	log.Info("refundSbchFromHtlc:", senderAddr, hashLock)
 	txHash := common.BytesToHash(reverseBytes(hashLock[:]))
 	return &txHash, nil
 }
 
-func (c *MockSbchClient) getSwapState(hashLock common.Hash) (uint8, error) {
+func (c *MockSbchClient) getSwapState(senderAddr common.Address, hashLock common.Hash) (uint8, error) {
 	panic("not implemented")
 }
 

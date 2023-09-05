@@ -19,6 +19,7 @@ const (
 	Bch2SbchStatusBchUnlocked
 	Bch2SbchStatusSbchRefunded
 	Bch2SbchStatusTooLateToLockSbch
+	Bch2SbchStatusPriceChanged
 )
 
 const (
@@ -28,6 +29,7 @@ const (
 	Sbch2BchStatusSbchUnlocked
 	Sbch2BchStatusBchRefunded
 	Sbch2BchStatusTooLateToLockBch
+	Sbch2BchStatusPriceChanged
 )
 
 type LastHeights struct {
@@ -41,6 +43,7 @@ type Bch2SbchRecord struct {
 	BchLockHeight    uint64         `gorm:"not null"` // got from tx
 	BchLockTxHash    string         `gorm:"unique"`   // got from tx
 	Value            uint64         `gorm:"not null"` // got from tx, in Sats
+	BchPrice         uint64         `gorm:"not null"` // got from tx, 8 decimals
 	RecipientPkh     string         `gorm:"not null"` // got from retData
 	SenderPkh        string         `gorm:"not null"` // got from retData
 	HashLock         string         `gorm:"unique"`   // got from retData, in Blocks
@@ -62,6 +65,7 @@ type Sbch2BchRecord struct {
 	SbchLockTime     uint64         `gorm:"not null"` // got from event
 	SbchLockTxHash   string         `gorm:"unique"`   // got from event
 	Value            uint64         `gorm:"not null"` // got from txValue, in Sats
+	SbchPrice        uint64         `gorm:"not null"` // got from event, 8 decimals
 	SbchSenderAddr   string         `gorm:"not null"` // got from event
 	BchRecipientPkh  string         `gorm:"not null"` // got from event
 	HashLock         string         `gorm:"unique"`   // got from event

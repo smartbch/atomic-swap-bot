@@ -42,6 +42,8 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 	_timeLock := uint16(100)
 	_penaltyBPS := uint16(500)
 	_evmAddr := gethAddrBytes("evm")
+	_botBchPrice := uint64(1e8)
+	_botSbchPrice := uint64(1e8)
 
 	covenant, err := htlcbch.NewMainnetCovenant(_userPkh, _botPkh, _hashLock, _timeLock, _penaltyBPS)
 	require.NoError(t, err)
@@ -65,7 +67,8 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 						PkScript: newP2SHPkScript(scriptHash),
 					},
 					{
-						PkScript: newHtlcDepositOpRet(_botPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr),
+						PkScript: newHtlcDepositOpRet(_botPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr,
+							_botBchPrice-2),
 					},
 				},
 			},
@@ -77,11 +80,12 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 				TxIn: []*wire.TxIn{},
 				TxOut: []*wire.TxOut{
 					{
-						Value:    12345678,
+						Value:    12345666,
 						PkScript: newP2SHPkScript(scriptHash2),
 					},
 					{
-						PkScript: newHtlcDepositOpRet(_userPkh, _userPkh, _hashLock2, _timeLock, _penaltyBPS, _evmAddr),
+						PkScript: newHtlcDepositOpRet(_userPkh, _userPkh, _hashLock2, _timeLock, _penaltyBPS, _evmAddr,
+							_botBchPrice),
 					},
 				},
 			},
@@ -96,6 +100,8 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 		bchPkh:       _botPkh,
 		bchTimeLock:  _timeLock,
 		penaltyRatio: _penaltyBPS,
+		bchPrice:     _botBchPrice,
+		sbchPrice:    _botSbchPrice,
 	}
 	_bot.scanBchBlocks()
 
@@ -111,6 +117,7 @@ func TestBch2Sbch_userLockBch(t *testing.T) {
 	require.Equal(t, uint64(126), record0.BchLockHeight)
 	require.Equal(t, _bchCli.blocks[126].Transactions[0].TxHash().String(), record0.BchLockTxHash)
 	require.Equal(t, uint64(_bchCli.blocks[126].Transactions[0].TxOut[0].Value), record0.Value)
+	require.Equal(t, _botBchPrice-2, record0.BchPrice)
 	require.Equal(t, toHex(_botPkh), record0.RecipientPkh)
 	require.Equal(t, toHex(_userPkh), record0.SenderPkh)
 	require.Equal(t, toHex(_hashLock), record0.HashLock)
@@ -132,6 +139,8 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 	_minSwapVal := uint64(100000)
 	_maxSwapVal := uint64(999999)
 	_evmAddr := gethAddrBytes("evm")
+	_botBchPrice := uint64(1e8)
+	_botSbchPrice := uint64(1e8)
 
 	_db := initDB(t, 123, 456)
 	_bchCli := newMockBchClient(124, 128)
@@ -145,7 +154,7 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 						PkScript: getHtlcP2shPkScript(_userPkh, testBchPkh, _hashLock, _timeLock/2, _penaltyBPS),
 					},
 					{
-						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock/2, _penaltyBPS, _evmAddr),
+						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock/2, _penaltyBPS, _evmAddr, 1e8),
 					},
 				},
 			},
@@ -157,7 +166,7 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 						PkScript: getHtlcP2shPkScript(_userPkh, testBchPkh, _hashLock, _timeLock, _penaltyBPS+1),
 					},
 					{
-						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS+1, _evmAddr),
+						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS+1, _evmAddr, 1e8),
 					},
 				},
 			},
@@ -169,7 +178,7 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 						PkScript: getHtlcP2shPkScript(_userPkh, testBchPkh, _hashLock, _timeLock, _penaltyBPS),
 					},
 					{
-						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr),
+						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr, 1e8),
 					},
 				},
 			},
@@ -181,7 +190,20 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 						PkScript: getHtlcP2shPkScript(_userPkh, testBchPkh, _hashLock, _timeLock, _penaltyBPS),
 					},
 					{
-						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr),
+						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr, 1e8),
+					},
+				},
+			},
+			{
+				TxIn: []*wire.TxIn{},
+				TxOut: []*wire.TxOut{ // price is too high
+					{
+						Value:    int64(_minSwapVal + 1),
+						PkScript: getHtlcP2shPkScript(_userPkh, testBchPkh, _hashLock, _timeLock, _penaltyBPS),
+					},
+					{
+						PkScript: newHtlcDepositOpRet(testBchPkh, _userPkh, _hashLock, _timeLock, _penaltyBPS, _evmAddr,
+							_botBchPrice+2),
 					},
 				},
 			},
@@ -198,6 +220,8 @@ func TestBch2Sbch_userLockBch_invalidParams(t *testing.T) {
 		penaltyRatio: _penaltyBPS,
 		maxSwapVal:   _maxSwapVal,
 		minSwapVal:   _minSwapVal,
+		bchPrice:     _botBchPrice,
+		sbchPrice:    _botSbchPrice,
 	}
 	_bot.scanBchBlocks()
 
@@ -219,12 +243,15 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 	_timeLock := uint32(100)
 	_evmAddr := gethAddrBytes("evm")
 	_scriptHash := gethAddrBytes("htlc")
+	_botBchPrice := uint64(8e7)
+	_botSbchPrice := uint64(1e8)
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
 		BchLockHeight:  123,
 		BchLockTxHash:  toHex(_txHash),
 		Value:          _val,
+		BchPrice:       _botBchPrice - 1,
 		RecipientPkh:   toHex(_botPkh),
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock),
@@ -237,14 +264,15 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 	_bchCli := newMockBchClient(124, 125)
 	_sbchCli := newMockSbchClient(457, 999, 0)
 	_bot := &MarketMakerBot{
-		db:              _db,
-		dbQueryLimit:    100,
-		bchCli:          _bchCli,
-		sbchCli:         _sbchCli,
-		bchPrivKey:      testBchPrivKey,
-		bchPkh:          _botPkh,
-		bchTimeLock:     72,
-		serviceFeeRatio: 100,
+		db:           _db,
+		dbQueryLimit: 100,
+		bchCli:       _bchCli,
+		sbchCli:      _sbchCli,
+		bchPrivKey:   testBchPrivKey,
+		bchPkh:       _botPkh,
+		bchTimeLock:  72,
+		bchPrice:     _botBchPrice,
+		sbchPrice:    _botSbchPrice,
 	}
 	_bot.handleBchUserDeposits()
 
@@ -270,6 +298,57 @@ func TestBch2Sbch_botLockSbch(t *testing.T) {
 	require.Equal(t, Bch2SbchStatusSbchLocked, record0.Status)
 }
 
+func TestBch2Sbch_botLockSbch_priceChanged(t *testing.T) {
+	_val := uint64(12345678)
+	_txHash := gethHash32Bytes("bchlock")
+	_botPkh := gethAddrBytes("bot")
+	_userPkh := gethAddrBytes("user")
+	_hashLock := gethHash32Bytes("hash")
+	_timeLock := uint32(100)
+	_evmAddr := gethAddrBytes("evm")
+	_scriptHash := gethAddrBytes("htlc")
+	_botBchPrice := uint64(8e7)
+	_botSbchPrice := uint64(1e8)
+
+	_db := initDB(t, 123, 456)
+	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
+		BchLockHeight:  123,
+		BchLockTxHash:  toHex(_txHash),
+		Value:          _val,
+		BchPrice:       _botBchPrice - 1,
+		RecipientPkh:   toHex(_botPkh),
+		SenderPkh:      toHex(_userPkh),
+		HashLock:       toHex(_hashLock),
+		TimeLock:       _timeLock,
+		SenderEvmAddr:  toHex(_evmAddr),
+		HtlcScriptHash: toHex(_scriptHash),
+		Status:         Bch2SbchStatusNew,
+	}))
+
+	_bchCli := newMockBchClient(124, 125)
+	_sbchCli := newMockSbchClient(457, 999, 0)
+	_bot := &MarketMakerBot{
+		db:           _db,
+		dbQueryLimit: 100,
+		bchCli:       _bchCli,
+		sbchCli:      _sbchCli,
+		bchPrivKey:   testBchPrivKey,
+		bchPkh:       _botPkh,
+		bchTimeLock:  72,
+		bchPrice:     _botBchPrice - 2,
+		sbchPrice:    _botSbchPrice,
+	}
+	_bot.handleBchUserDeposits()
+
+	unhandled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusNew, 100)
+	require.NoError(t, err)
+	require.Len(t, unhandled, 0)
+
+	handled, err := _db.getBch2SbchRecordsByStatus(Bch2SbchStatusPriceChanged, 100)
+	require.NoError(t, err)
+	require.Len(t, handled, 1)
+}
+
 func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 	_val := uint64(12345678)
 	_txHash := gethHash32Bytes("bchlock")
@@ -285,6 +364,7 @@ func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 		BchLockHeight:  123,
 		BchLockTxHash:  toHex(_txHash),
 		Value:          _val,
+		BchPrice:       1e8,
 		RecipientPkh:   toHex(_botPkh),
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock),
@@ -302,6 +382,8 @@ func TestBch2Sbch_botLockSbch_notConfirmed(t *testing.T) {
 		bchPkh:           _botPkh,
 		bchTimeLock:      72,
 		bchConfirmations: 10,
+		bchPrice:         1e8,
+		sbchPrice:        1e8,
 	}
 	_bot.scanBchBlocks()
 
@@ -325,6 +407,7 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 		BchLockHeight:  123,
 		BchLockTxHash:  toHex(_txHash),
 		Value:          _val,
+		BchPrice:       1e8,
 		RecipientPkh:   toHex(_botPkh),
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock),
@@ -342,6 +425,8 @@ func TestBch2Sbch_botLockSbch_tooLate(t *testing.T) {
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       _botPkh,
 		bchTimeLock:  72,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 	_bot.handleBchUserDeposits()
 
@@ -370,6 +455,7 @@ func TestBch2Sbch_userUnlockSbch(t *testing.T) {
 		BchLockHeight:  122,
 		BchLockTxHash:  toHex(_bchLockTxHash.Bytes()),
 		Value:          _val,
+		BchPrice:       1e8,
 		RecipientPkh:   toHex(testBchPkh),
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock[:]),
@@ -396,6 +482,8 @@ func TestBch2Sbch_userUnlockSbch(t *testing.T) {
 		dbQueryLimit: 100,
 		sbchCli:      _sbchCli,
 		bchPkh:       testBchPkh,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 
 	_bot.scanSbchEvents()
@@ -442,6 +530,7 @@ func TestBch2Sbch_botUnlockBch(t *testing.T) {
 		BchLockHeight:  122,
 		BchLockTxHash:  toHex(_bchLockTxHash),
 		Value:          _val,
+		BchPrice:       1e8,
 		RecipientPkh:   toHex(testBchPkh),
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock[:]),
@@ -460,6 +549,8 @@ func TestBch2Sbch_botUnlockBch(t *testing.T) {
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       testBchPkh,
 		bchAddr:      testBchAddr,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 	_bot.unlockBchUserDeposits()
 
@@ -512,6 +603,7 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 		BchLockHeight:  122,
 		BchLockTxHash:  toHex(_bchLockTxHash.Bytes()),
 		Value:          _val,
+		BchPrice:       1e8,
 		RecipientPkh:   toHex(testBchPkh),
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock[:]),
@@ -530,6 +622,8 @@ func TestBch2Sbch_botRefundSbch(t *testing.T) {
 		dbQueryLimit: 100,
 		sbchCli:      _sbchCli,
 		bchPkh:       testBchPkh,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 
 	_bot.refundLockedSbch()
@@ -569,12 +663,14 @@ func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 	_userBchPkh := gethAddrBytes("ubch")
 	_createdAt := int64ToBytes32(987600000)
 	_penaltyBPS := int64ToBytes32(500)
+	_expectedPrice := int64ToBytes32(1e18)
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addBch2SbchRecord(&Bch2SbchRecord{
 		BchLockHeight:  123,
 		BchLockTxHash:  toHex(_txHash),
 		Value:          _val,
+		BchPrice:       1e8,
 		RecipientPkh:   toHex(_botPkh),
 		SenderPkh:      toHex(_userPkh),
 		HashLock:       toHex(_hashLock),
@@ -602,6 +698,7 @@ func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 				rightPad0(_userBchPkh, 12),
 				_createdAt,
 				_penaltyBPS,
+				_expectedPrice,
 			),
 		},
 	}
@@ -612,6 +709,8 @@ func TestBch2Sbch_handleSbchLockEvent_slaveMode(t *testing.T) {
 		sbchCli:      _sbchCli,
 		sbchAddr:     _botEvmAddr,
 		isSlaveMode:  true,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 	_bot.handleSbchEvents(457, 500)
 
@@ -648,6 +747,8 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 	_createdAt := int64ToBytes32(987600000)
 	_timeLock := int64ToBytes32(987600000 + 12*3600)
 	_penaltyBPS := int64ToBytes32(500)
+	_botBchPrice := uint64(1e8)
+	_botSbchPrice := uint64(1e8)
 
 	_db := initDB(t, 123, 456)
 	_sbchCli := newMockSbchClient(457, 999, 0)
@@ -661,7 +762,7 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 				gethAddrToHash32(testEvmAddr),
 			},
 			Data: joinBytes(_hashLock.Bytes(), _timeLock, _val, rightPad0(_userBchPkh, 12),
-				_createdAt, _penaltyBPS),
+				_createdAt, _penaltyBPS, satsToWeiBytes32(_botSbchPrice-1)),
 		},
 	}
 	_bot := &MarketMakerBot{
@@ -672,6 +773,8 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 		bchPkh:       testBchPkh,
 		sbchTimeLock: 12 * 3600,
 		penaltyRatio: 500,
+		bchPrice:     _botBchPrice,
+		sbchPrice:    _botSbchPrice,
 	}
 	_bot.scanSbchEvents()
 
@@ -687,6 +790,7 @@ func TestSbch2Bch_userLockSbch(t *testing.T) {
 	require.Equal(t, uint64(987600000), record0.SbchLockTime)
 	require.Equal(t, toHex(_sbchLockTxHash[:]), record0.SbchLockTxHash)
 	require.Equal(t, uint64(12345678), record0.Value)
+	require.Equal(t, _botSbchPrice-1, record0.SbchPrice)
 	require.Equal(t, toHex(_userEvmAddr[:]), record0.SbchSenderAddr)
 	require.Equal(t, toHex(_userBchPkh), record0.BchRecipientPkh)
 	require.Equal(t, toHex(_hashLock[:]), record0.HashLock)
@@ -709,6 +813,8 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 	_sbchTimeLock := uint32(12 * 3600)
 	_minSwapVal := uint64(100000)
 	_maxSwapVal := uint64(999999)
+	_botBchPrice := uint64(1e8)
+	_botSbchPrice := uint64(1e8)
 
 	_db := initDB(t, 123, 456)
 	_sbchCli := newMockSbchClient(457, 999, 0)
@@ -728,6 +834,7 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 				rightPad0(_userBchPkh, 12),
 				int64ToBytes32(_createdAt),
 				int64ToBytes32(int64(_penaltyBPS/2)), // invalid penaltyBPS
+				satsToWeiBytes32(_botSbchPrice-1),
 			),
 		},
 		{
@@ -745,6 +852,7 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 				rightPad0(_userBchPkh, 12),
 				int64ToBytes32(_createdAt),
 				int64ToBytes32(int64(_penaltyBPS)),
+				satsToWeiBytes32(_botSbchPrice-1),
 			),
 		},
 		{
@@ -762,6 +870,7 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 				rightPad0(_userBchPkh, 12),
 				int64ToBytes32(_createdAt),
 				int64ToBytes32(int64(_penaltyBPS)),
+				satsToWeiBytes32(_botSbchPrice-1),
 			),
 		},
 		{
@@ -779,6 +888,25 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 				rightPad0(_userBchPkh, 12),
 				int64ToBytes32(_createdAt),
 				int64ToBytes32(int64(_penaltyBPS)),
+				satsToWeiBytes32(_botSbchPrice-1),
+			),
+		},
+		{
+			BlockNumber: 459,
+			TxHash:      _sbchLockTxHash,
+			Topics: []gethcmn.Hash{
+				htlcsbch.LockEventId,
+				gethAddrToHash32(_userEvmAddr),
+				gethAddrToHash32(testEvmAddr),
+			},
+			Data: joinBytes(
+				_hashLock.Bytes(),
+				int64ToBytes32(_createdAt+int64(_sbchTimeLock)),
+				satsToWeiBytes32(_maxSwapVal-1),
+				rightPad0(_userBchPkh, 12),
+				int64ToBytes32(_createdAt),
+				int64ToBytes32(int64(_penaltyBPS)), // price is too high
+				satsToWeiBytes32(_botSbchPrice+2),
 			),
 		},
 	}
@@ -792,6 +920,8 @@ func TestSbch2Bch_userLockSbch_invalidParams(t *testing.T) {
 		penaltyRatio: _penaltyBPS,
 		minSwapVal:   _minSwapVal,
 		maxSwapVal:   _maxSwapVal,
+		bchPrice:     _botBchPrice,
+		sbchPrice:    _botSbchPrice,
 	}
 	_bot.scanSbchEvents()
 
@@ -813,12 +943,15 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 	_timeLock := uint32(36000)
 	_userBchPkh := gethAddrBytes("ubch")
 	_scriptHash := gethAddrBytes("htlc")
+	_bchPrice := uint64(1e8)
+	_sbchPrice := uint64(8e7)
 
 	_db := initDB(t, 123, 456)
 	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
 		SbchLockTime:     _lockTime,
 		SbchLockTxHash:   toHex(_sbchLockTxHash),
 		Value:            _val,
+		SbchPrice:        _sbchPrice - 1,
 		SbchSenderAddr:   _userEvmAddr.String(),
 		BchRecipientPkh:  toHex(_userBchPkh),
 		HashLock:         toHex(_hashLock),
@@ -841,6 +974,8 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 		sbchCli:      _sbchCli,
 		sbchAddr:     testEvmAddr,
 		sbchTimeLock: _timeLock,
+		bchPrice:     _bchPrice,
+		sbchPrice:    _sbchPrice,
 	}
 
 	_bot.handleSbchUserDeposits()
@@ -857,11 +992,66 @@ func TestSbch2Bch_botLockBch(t *testing.T) {
 	require.Equal(t, toHex(_hashLock), record0.HashLock)
 	require.Equal(t, uint32(36000), record0.TimeLock)
 	require.Equal(t, toHex(_scriptHash), record0.HtlcScriptHash)
-	require.Equal(t, "c5eb9154b5affee47b863866a4264933c805f4700a0c1041c188292a4e70c333",
+	require.Equal(t, "c0c8dc27968d3324c310da653917949163c49c081c9b3a0622bd305b1c7635e7",
 		record0.BchLockTxHash)
 	require.Equal(t, "", record0.Secret)
 	require.Equal(t, "", record0.SbchUnlockTxHash)
 	require.Equal(t, Sbch2BchStatusBchLocked, record0.Status)
+}
+
+func TestSbch2Bch_botLockBch_priceChanged(t *testing.T) {
+	_sbchLockTxHash := gethHash32Bytes("sbchlocktx")
+	_val := uint64(12345678)
+	_userEvmAddr := gethAddr("uevm")
+	_hashLock := gethHash32Bytes("hashlock")
+	_lockTime := uint64(1683248875) // time.Now().Unix()
+	_timeLock := uint32(36000)
+	_userBchPkh := gethAddrBytes("ubch")
+	_scriptHash := gethAddrBytes("htlc")
+	_bchPrice := uint64(1e8)
+	_sbchPrice := uint64(8e7)
+
+	_db := initDB(t, 123, 456)
+	require.NoError(t, _db.addSbch2BchRecord(&Sbch2BchRecord{
+		SbchLockTime:     _lockTime,
+		SbchLockTxHash:   toHex(_sbchLockTxHash),
+		Value:            _val,
+		SbchPrice:        _sbchPrice - 1,
+		SbchSenderAddr:   _userEvmAddr.String(),
+		BchRecipientPkh:  toHex(_userBchPkh),
+		HashLock:         toHex(_hashLock),
+		TimeLock:         _timeLock,
+		HtlcScriptHash:   toHex(_scriptHash),
+		BchLockTxHash:    "",
+		Secret:           "",
+		SbchUnlockTxHash: "",
+		Status:           Sbch2BchStatusNew,
+	}))
+
+	_bchCli := &MockBchClient{}
+	_sbchCli := newMockSbchClient(457, 500, _lockTime+60)
+	_bot := &MarketMakerBot{
+		db:           _db,
+		dbQueryLimit: 100,
+		bchCli:       _bchCli,
+		bchPrivKey:   testBchPrivKey,
+		bchPkh:       testBchPkh,
+		sbchCli:      _sbchCli,
+		sbchAddr:     testEvmAddr,
+		sbchTimeLock: _timeLock,
+		bchPrice:     _bchPrice,
+		sbchPrice:    _sbchPrice - 2,
+	}
+
+	_bot.handleSbchUserDeposits()
+
+	unhandled, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusBchLocked, 100)
+	require.NoError(t, err)
+	require.Len(t, unhandled, 0)
+
+	handled, err := _db.getSbch2BchRecordsByStatus(Sbch2BchStatusPriceChanged, 100)
+	require.NoError(t, err)
+	require.Len(t, handled, 1)
 }
 
 func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
@@ -879,6 +1069,7 @@ func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
 		SbchLockTime:     _lockTime,
 		SbchLockTxHash:   toHex(_sbchLockTxHash),
 		Value:            _val,
+		SbchPrice:        1e8,
 		SbchSenderAddr:   _userEvmAddr.String(),
 		BchRecipientPkh:  toHex(_userBchPkh),
 		HashLock:         toHex(_hashLock),
@@ -901,6 +1092,8 @@ func TestSbch2Bch_botLockBch_tooLate(t *testing.T) {
 		sbchCli:      _sbchCli,
 		sbchAddr:     testEvmAddr,
 		sbchTimeLock: _timeLock,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 
 	_bot.handleSbchUserDeposits()
@@ -942,6 +1135,7 @@ func TestSbch2Bch_userUnlockBch(t *testing.T) {
 		SbchLockTime:     uint64(time.Now().Unix()),
 		SbchLockTxHash:   toHex(_sbchLockTxHash),
 		Value:            _val,
+		SbchPrice:        1e8,
 		SbchSenderAddr:   _userEvmAddr.String(),
 		BchRecipientPkh:  toHex(_userBchPkh),
 		HashLock:         toHex(_hashLock),
@@ -975,6 +1169,8 @@ func TestSbch2Bch_userUnlockBch(t *testing.T) {
 		dbQueryLimit: 100,
 		bchCli:       _bchCli,
 		bchPkh:       testBchPkh,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 
 	_bot.scanBchBlocks()
@@ -1016,6 +1212,7 @@ func TestSbch2Bch_botUnlockSbch(t *testing.T) {
 		SbchLockTime:     uint64(time.Now().Unix()),
 		SbchLockTxHash:   toHex(_sbchLockTxHash),
 		Value:            _val,
+		SbchPrice:        1e8,
 		SbchSenderAddr:   _userEvmAddr.String(),
 		BchRecipientPkh:  toHex(_userBchPkh),
 		HashLock:         toHex(_hashLock),
@@ -1033,6 +1230,8 @@ func TestSbch2Bch_botUnlockSbch(t *testing.T) {
 		db:           _db,
 		dbQueryLimit: 100,
 		sbchCli:      _sbchCli,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 
 	_bot.unlockSbchUserDeposits()
@@ -1082,6 +1281,7 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 		SbchLockTime:     uint64(time.Now().Unix()),
 		SbchLockTxHash:   toHex(_sbchLockTxHash),
 		Value:            _val,
+		SbchPrice:        1e8,
 		SbchSenderAddr:   _userEvmAddr.String(),
 		BchRecipientPkh:  toHex(_userBchPkh),
 		HashLock:         toHex(_hashLock),
@@ -1103,6 +1303,8 @@ func TestSbch2Bch_botRefundBch(t *testing.T) {
 		bchPrivKey:   testBchPrivKey,
 		bchPkh:       testBchPkh,
 		bchAddr:      testBchAddr,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 
 	_bot.refundLockedBCH(true)
@@ -1147,6 +1349,7 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 		SbchLockTime:     _lockTime,
 		SbchLockTxHash:   toHex(_sbchLockTxHash),
 		Value:            _val,
+		SbchPrice:        1e8,
 		SbchSenderAddr:   _userEvmAddr.String(),
 		BchRecipientPkh:  toHex(_userBchPkh),
 		HashLock:         toHex(_hashLock),
@@ -1162,7 +1365,7 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 	require.NoError(t, err)
 	scriptHash, err := covenant.GetRedeemScriptHash()
 	require.NoError(t, err)
-	opRet, _ := covenant.BuildOpRetPkScript(_userEvmAddr[:])
+	opRet, _ := covenant.BuildOpRetPkScript(_userEvmAddr[:], 1e8)
 
 	_bchCli := newMockBchClient(122, 222)
 	_bchCli.blocks[126] = &wire.MsgBlock{
@@ -1191,6 +1394,8 @@ func TestSbch2Bch_handleBchDepositTxS2B(t *testing.T) {
 		sbchAddr:     testEvmAddr,
 		sbchTimeLock: _sbchTimeLock,
 		isSlaveMode:  true,
+		bchPrice:     1e8,
+		sbchPrice:    1e8,
 	}
 
 	_bot.scanBchBlocks()
