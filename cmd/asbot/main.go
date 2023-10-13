@@ -74,12 +74,12 @@ func main() {
 		debugMode, slaveMode, lazyMaster,
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("failed to create bot", err)
 	}
 
 	utxos, err := _bot.GetUTXOs()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("failed to query BCH UTXOs", err)
 	}
 	printUTXOs(utxos)
 
