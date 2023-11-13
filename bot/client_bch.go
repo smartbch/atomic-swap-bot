@@ -17,11 +17,11 @@ import (
 )
 
 type IBchClient interface {
-	getBlockCount() (int64, error)
-	getBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error)
-	getUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentResult, error)
-	getAllUTXOs() ([]btcjson.ListUnspentResult, error)
-	getTxConfirmations(txHashHex string) (int64, error)
+	GetBlockCount() (int64, error)
+	GetBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error)
+	GetUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentResult, error)
+	GetAllUTXOs() ([]btcjson.ListUnspentResult, error)
+	GetTxConfirmations(txHashHex string) (int64, error)
 	SendTx(tx *wire.MsgTx) (*chainhash.Hash, error)
 }
 
@@ -53,11 +53,11 @@ func NewBchClient(rpcUrlStr string, botAddr bchutil.Address) (*BchClient, error)
 	return &BchClient{client: client, botAddr: botAddr}, nil
 }
 
-func (c *BchClient) getBlockCount() (int64, error) {
+func (c *BchClient) GetBlockCount() (int64, error) {
 	return c.client.GetBlockCount()
 }
 
-func (c *BchClient) getBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error) {
+func (c *BchClient) GetBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error) {
 	blockHash, err := c.client.GetBlockHash(height)
 	if err != nil {
 		return nil, nil
@@ -69,14 +69,14 @@ func (c *BchClient) getBlock(height int64) (*btcjson.GetBlockVerboseTxResult, er
 	return block, err
 }
 
-func (c *BchClient) getAllUTXOs() ([]btcjson.ListUnspentResult, error) {
+func (c *BchClient) GetAllUTXOs() ([]btcjson.ListUnspentResult, error) {
 	minConf := 0
 	maxConf := 9999999
 	return c.client.ListUnspentMinMaxAddresses(
 		minConf, maxConf, []bchutil.Address{c.botAddr})
 }
 
-func (c *BchClient) getUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentResult, error) {
+func (c *BchClient) GetUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentResult, error) {
 	minConf := 0 //
 	maxConf := 9999999
 	allUTXOs, err := c.client.ListUnspentMinMaxAddresses(
@@ -123,7 +123,7 @@ func findUTXOs(allUTXOs []btcjson.ListUnspentResult,
 		"no available UTXOs (minVal: %d sats, maxCount: %d)", minVal, maxCount)
 }
 
-func (c *BchClient) getTxConfirmations(txHashHex string) (int64, error) {
+func (c *BchClient) GetTxConfirmations(txHashHex string) (int64, error) {
 	var txHash chainhash.Hash
 	err := chainhash.Decode(&txHash, txHashHex)
 	if err != nil {

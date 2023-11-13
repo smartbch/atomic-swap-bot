@@ -423,7 +423,7 @@ func (bot *MarketMakerBot) PrepareDB() {
 }
 
 func (bot *MarketMakerBot) GetUTXOs() ([]btcjson.ListUnspentResult, error) {
-	return bot.bchCli.getAllUTXOs()
+	return bot.bchCli.GetAllUTXOs()
 }
 
 func (bot *MarketMakerBot) Loop() {
@@ -472,7 +472,7 @@ func (bot *MarketMakerBot) scanBchBlocks() (gotNewBlocks bool) {
 	}
 	log.Info("last BCH height: ", lastBlockNum)
 
-	latestBlockNum, err := bot.bchCli.getBlockCount()
+	latestBlockNum, err := bot.bchCli.GetBlockCount()
 	if err != nil {
 		bot.logError("RPC error, failed to get BCH height: ", err)
 		return
@@ -499,7 +499,7 @@ func (bot *MarketMakerBot) scanBchBlocks() (gotNewBlocks bool) {
 // handle BCH lock|unlock|refund txs
 func (bot *MarketMakerBot) handleBchBlock(h int64) bool {
 	//log.Info("get BCH block#", h, " ...")
-	block, err := bot.bchCli.getBlock(h)
+	block, err := bot.bchCli.GetBlock(h)
 	if err != nil {
 		bot.logError(fmt.Sprintf("RPC error, failed to get BCH block#%d: ", h), err)
 		return false
@@ -898,7 +898,7 @@ func (bot *MarketMakerBot) handleBchUserDeposits() {
 		}
 
 		//confirmations := currBlockNum - int64(record.BchLockHeight) + 1
-		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
+		confirmations, err := bot.bchCli.GetTxConfirmations(record.BchLockTxHash)
 		if err != nil {
 			bot.logError("RPC error, failed to get tx confirmations: ", err)
 			continue
@@ -991,7 +991,7 @@ func (bot *MarketMakerBot) handleSbchUserDeposits() {
 
 		// val * sbchPrice / 1e8
 		bchVal := int64(mulByPrice(record.Value, record.SbchPrice))
-		utxos, err := bot.bchCli.getUTXOs(bchVal+5000, 10)
+		utxos, err := bot.bchCli.GetUTXOs(bchVal+5000, 10)
 		if err != nil {
 			bot.logError("failed to get UTXOs: ", err)
 			continue
@@ -1234,7 +1234,7 @@ func (bot *MarketMakerBot) refundLockedBCH(gotNewBlocks bool) {
 			requiredConfirmations += slaveDelayBchBlocks * 2
 		}
 
-		confirmations, err := bot.bchCli.getTxConfirmations(record.BchLockTxHash)
+		confirmations, err := bot.bchCli.GetTxConfirmations(record.BchLockTxHash)
 		if err != nil {
 			bot.logError("RPC error, failed to get tx confirmations: ", err)
 			continue
