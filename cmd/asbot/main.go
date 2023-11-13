@@ -31,7 +31,7 @@ var (
 	bchRefundFeeRate = uint64(2) // sats/byte
 	bchConfirmations = uint64(10)
 	dbQueryLimit     = uint64(100)
-	debugMode        = true
+	debugMode        = false
 	slaveMode        = false
 	lazyMaster       = false
 	rpcListenAddr    = ""
@@ -58,7 +58,7 @@ func main() {
 	flag.StringVar(&rpcListenAddr, "rpc-listen-addr", rpcListenAddr, "host:port (will start RPC server if this option is not empty)")
 	flag.Parse()
 
-	if (!slaveMode && bchPrivKeyWIF == "") || sbchPrivKeyHex == "" || !debugMode {
+	if bchPrivKeyWIF == "" || sbchPrivKeyHex == "" {
 		bchPrivKeyWIF, sbchPrivKeyHex = readKeys(slaveMode)
 	}
 
@@ -74,12 +74,12 @@ func main() {
 		debugMode, slaveMode, lazyMaster,
 	)
 	if err != nil {
-		log.Fatal("failed to create bot", err)
+		log.Fatal("failed to create bot: ", err)
 	}
 
 	utxos, err := _bot.GetUTXOs()
 	if err != nil {
-		log.Fatal("failed to query BCH UTXOs", err)
+		log.Fatal("failed to query BCH UTXOs: ", err)
 	}
 	printUTXOs(utxos)
 
