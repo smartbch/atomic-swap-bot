@@ -60,11 +60,11 @@ func (c *BchClient) GetBlockCount() (int64, error) {
 func (c *BchClient) GetBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error) {
 	blockHash, err := c.client.GetBlockHash(height)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	block, err := c.client.GetBlockVerboseTx(blockHash)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	return block, err
 }
