@@ -480,6 +480,9 @@ func (bot *MarketMakerBot) scanBchBlocks() (gotNewBlocks bool) {
 	log.Info("latest BCH height: ", latestBlockNum)
 
 	safeNewBlockNum := latestBlockNum - int64(bot.bchConfirmations)
+	if bot.bchConfirmations > 0 {
+		safeNewBlockNum += 1
+	}
 
 	if lastBlockNum == 0 {
 		lastBlockNum = uint64(safeNewBlockNum) - 1
