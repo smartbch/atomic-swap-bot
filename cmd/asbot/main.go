@@ -5,13 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
-	"os"
 
 	goecies "github.com/ecies/go"
 	gethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/gcash/bchd/btcjson"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/smartbch/atomic-swap-bot/bot"
 )
@@ -35,6 +35,8 @@ var (
 	slaveMode        = false
 	lazyMaster       = false
 	rpcListenAddr    = ""
+	rollingLogFile   = ""
+	rollingLogSize   = uint64(100)
 )
 
 func main() {
@@ -56,7 +58,23 @@ func main() {
 	flag.BoolVar(&slaveMode, "slave", slaveMode, "slave mode")
 	flag.BoolVar(&lazyMaster, "lazy-master", lazyMaster, "delay to send unlock|refund tx (debug mode only)")
 	flag.StringVar(&rpcListenAddr, "rpc-listen-addr", rpcListenAddr, "host:port (will start RPC server if this option is not empty)")
+	flag.StringVar(&rollingLogFile, "rolling-log-file", rollingLogFile, "path of rolling log file")
+	flag.Uint64Var(&rollingLogSize, "rolling-log-size", rollingLogSize, "max size of rolling log file, in MB")
 	flag.Parse()
+
+	if rollingLogFile != "" {
+		log.Info("logs are written to:", rollingLogFile)
+
+		// https://stackoverflow.com/questions/28796021/how-can-i-log-in-golang-to-a-file-with-log-rotation
+		// https://github.com/natefinch/lumberjack
+		log.SetOutput(&lumberjack.Logger{
+			Filename:   rollingLogFile,
+			MaxSize:    int(rollingLogSize),
+			MaxBackups: 3,    //
+			MaxAge:     28,   // days
+			Compress:   true, // disabled by default
+		})
+	}
 
 	if bchPrivKeyWIF == "" || sbchPrivKeyHex == "" {
 		bchPrivKeyWIF, sbchPrivKeyHex = readKeys(slaveMode)
@@ -94,7 +112,7 @@ func main() {
 
 func printUTXOs(utxos []btcjson.ListUnspentResult) {
 	log.Info("BCH UTXOs:")
-	table := tablewriter.NewWriter(os.Stdout)
+	table := tablewriter.NewWriter(log.StandardLogger().Out)
 	table.SetHeader([]string{"TXID", "vout", "value", "confirmations"})
 	for _, utxo := range utxos {
 		table.Append([]string{
