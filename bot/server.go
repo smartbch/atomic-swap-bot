@@ -135,7 +135,7 @@ func (bot *MarketMakerBot) getBotInfo() (*Info, error) {
 }
 
 func (bot *MarketMakerBot) getFreeBch() (float64, error) {
-	utxos, err := bot.bchCli.getAllUTXOs()
+	utxos, err := bot.bchCli.GetAllUTXOs()
 	if err != nil {
 		return 0, err
 	}

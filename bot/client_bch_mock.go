@@ -31,22 +31,22 @@ func newMockBchClient(hFrom, hTo int64) *MockBchClient {
 	return cli
 }
 
-func (c *MockBchClient) getBlockCount() (int64, error) {
+func (c *MockBchClient) GetBlockCount() (int64, error) {
 	return c.hTo, nil
 }
 
-func (c *MockBchClient) getBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error) {
+func (c *MockBchClient) GetBlock(height int64) (*btcjson.GetBlockVerboseTxResult, error) {
 	if height < c.hFrom || height > c.hTo {
 		return nil, fmt.Errorf("no block#%d", height)
 	}
 	return msgBlockToVerbose(c.blocks[height]), nil
 }
 
-func (*MockBchClient) getAllUTXOs() ([]btcjson.ListUnspentResult, error) {
+func (*MockBchClient) GetAllUTXOs() ([]btcjson.ListUnspentResult, error) {
 	return nil, nil
 }
 
-func (c *MockBchClient) getUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentResult, error) {
+func (c *MockBchClient) GetUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentResult, error) {
 	return []btcjson.ListUnspentResult{{
 		TxID:   gethcmn.Hash{'f', 'a', 'k', 'e', 'u', 't', 'x', 'o'}.String(),
 		Vout:   0,
@@ -54,7 +54,7 @@ func (c *MockBchClient) getUTXOs(minVal, maxCount int64) ([]btcjson.ListUnspentR
 	}}, nil
 }
 
-func (c *MockBchClient) getTxConfirmations(txHashHex string) (int64, error) {
+func (c *MockBchClient) GetTxConfirmations(txHashHex string) (int64, error) {
 	return c.confirmations[txHashHex], nil
 }
 
